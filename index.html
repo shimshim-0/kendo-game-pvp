@@ -1,0 +1,1925 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>일격필살</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hahmlet:wght@400;600;800;900&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Brush+Script&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #EEE7D9;
+  --paper-2: #E5DCC9;
+  --paper-3: #F6F1E7;
+  --ink: #1B1915;
+  --ink-2: #4A453C;
+  --ink-3: #857D6E;
+  --rule: #CDC2AC;
+  --red: #D23A20;
+  --red-ink: #A82A13;
+  --track: #1A1815;
+  --serif: 'Hahmlet', 'Noto Serif KR', serif;
+  --sans: 'IBM Plex Sans KR', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+}
+input { user-select: text; -webkit-user-select: text; font-family: inherit; }
+button { font-family: inherit; color: inherit; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.grain {
+  position: fixed; inset: 0; pointer-events: none; z-index: 200; opacity: .32; mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .28  0 0 0 0 .2  0 0 0 .55 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+kbd {
+  font: 600 12px/1 var(--mono); display: inline-block; min-width: 22px; text-align: center;
+  padding: 4px 6px; border: 1.5px solid var(--ink); border-bottom-width: 3px; border-radius: 4px;
+  background: var(--paper-3); color: var(--ink);
+}
+
+/* ───────── game layout ───────── */
+.app { height: 100vh; display: grid; grid-template-columns: clamp(300px, 30vw, 420px) 1fr; }
+
+.track-col { background: var(--track); color: var(--paper); display: flex; flex-direction: column; min-height: 0; position: relative; }
+.track-head {
+  display: flex; justify-content: space-between; align-items: baseline; padding: 14px 18px 12px;
+  font: 500 12px var(--mono); color: rgba(238,231,217,.55); border-bottom: 1px solid rgba(238,231,217,.1);
+}
+.track-head b { color: var(--paper); font-weight: 600; }
+#track { flex: 1; min-height: 0; width: 100%; display: block; }
+.keys { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid rgba(238,231,217,.1); }
+.key { display: flex; flex-direction: column; align-items: center; gap: 7px; padding: 12px 2px 16px; }
+.kcap {
+  min-width: 46px; height: 44px; padding: 0 8px; display: grid; place-items: center;
+  font: 600 18px var(--mono); color: var(--ink); background: var(--paper);
+  border-radius: 5px; box-shadow: 0 4px 0 #8E8576; transition: transform .05s, box-shadow .05s, background .05s;
+}
+.key.down .kcap { transform: translateY(4px); box-shadow: 0 0 0 #8E8576; background: var(--lc); }
+.kname { display: flex; align-items: center; gap: 6px; font: 600 14px var(--sans); color: var(--paper); }
+.kname svg { width: 12px; height: 12px; fill: var(--lc); }
+
+.stage-col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.hud { display: grid; grid-template-columns: auto 1fr auto; gap: 28px; align-items: end; padding: 18px 28px 16px; border-bottom: 1.5px solid var(--ink); }
+.hud-k { font: 500 12px var(--sans); color: var(--ink-3); letter-spacing: .02em; }
+.score { font: 800 52px/1 var(--serif); font-variant-numeric: tabular-nums; letter-spacing: -.02em; margin-top: 4px; }
+.score-sub { font: 500 12.5px var(--sans); color: var(--ink-2); margin-top: 8px; display: flex; gap: 14px; }
+.score-sub b { font-family: var(--mono); font-weight: 600; }
+.meters { display: flex; flex-direction: column; gap: 12px; max-width: 360px; justify-self: end; width: 100%; }
+.meter-row { display: grid; grid-template-columns: 44px 1fr 46px; align-items: center; gap: 10px; }
+.meter-row .hud-k { color: var(--ink-2); font-weight: 600; }
+.meter-val { font: 600 13px var(--mono); text-align: right; }
+.segs { display: grid; grid-template-columns: repeat(20, 1fr); gap: 2px; height: 14px; }
+.segs i { background: transparent; border: 1.5px solid var(--ink); border-radius: 1px; }
+.segs i.on { background: var(--ink); }
+.segs.low i.on { background: var(--red); border-color: var(--red); }
+.ticks { display: grid; grid-template-columns: repeat(15, 1fr); gap: 3px; height: 12px; align-items: center; }
+.ticks i { height: 10px; transform: skewX(-18deg); border: 1.5px solid var(--ink-3); }
+.ticks i.on { background: var(--red); border-color: var(--red); }
+.fever-drain { height: 12px; border: 1.5px solid var(--red); position: relative; display: none; }
+.fever-drain i { position: absolute; inset: 0; right: auto; background: var(--red); }
+body.fever .ticks { display: none; }
+body.fever .fever-drain { display: block; }
+body.fever #feverVal { color: var(--red); }
+
+.stamp {
+  width: 70px; height: 70px; display: grid; place-items: center; border: 3px solid var(--red); border-radius: 7px;
+  color: var(--red); font: 900 24px/1 var(--serif); writing-mode: vertical-rl; letter-spacing: .05em;
+  box-shadow: inset 0 0 0 2px var(--paper), inset 0 0 0 4px var(--red); transform: rotate(-5deg); opacity: .92;
+}
+.stamp.thunk { animation: thunk .28s cubic-bezier(.2,1.6,.4,1); }
+@keyframes thunk { from { transform: rotate(-5deg) scale(1.6); opacity: 0; } to { transform: rotate(-5deg) scale(1); opacity: .92; } }
+
+#stage { flex: 1; min-height: 0; width: 100%; display: block; }
+.foot { display: flex; gap: 22px; flex-wrap: wrap; padding: 12px 28px 14px; border-top: 1px solid var(--rule); font: 500 12.5px var(--sans); color: var(--ink-3); }
+.foot b { color: var(--ink); font: 600 12.5px var(--mono); }
+.foot .tag { color: var(--red-ink); font-weight: 600; }
+
+/* ───────── screens ───────── */
+.screen { position: fixed; inset: 0; z-index: 50; display: none; background: var(--paper); overflow-y: auto; }
+.screen.open { display: flex; }
+.screen.dim { background: rgba(238,231,217,.93); }
+.wrap { margin: auto; width: 100%; max-width: 980px; padding: 48px 40px; }
+
+/* title */
+.title-grid { display: grid; grid-template-columns: auto 1fr; gap: 64px; align-items: center; }
+.title-v { writing-mode: vertical-rl; font: 900 clamp(64px, 12vh, 124px)/1.02 var(--serif); letter-spacing: .02em; position: relative; }
+.title-v .seal {
+  position: absolute; left: -46px; bottom: 6px; writing-mode: vertical-rl; font: 800 15px/1 var(--serif);
+  color: var(--paper); background: var(--red); padding: 8px 6px; border-radius: 3px; letter-spacing: .1em;
+}
+.title-side .kicker { font: 600 15px var(--sans); color: var(--ink-2); padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1.5px solid var(--ink); }
+.menu { display: flex; flex-direction: column; }
+.mbtn {
+  all: unset; display: block; cursor: pointer; position: relative; padding: 10px 0 10px 30px;
+  font: 600 30px/1.2 var(--serif); color: var(--ink-2); border-bottom: 1px solid var(--rule);
+}
+.mbtn small { display: block; font: 400 13px var(--sans); color: var(--ink-3); margin-top: 3px; }
+.mbtn::before {
+  content: ''; position: absolute; left: 4px; top: 25px; width: 12px; height: 12px; background: var(--red);
+  transform: scale(0) rotate(45deg); transition: transform .12s;
+}
+.mbtn:hover, .mbtn:focus { color: var(--ink); }
+.mbtn:hover::before, .mbtn:focus::before { transform: scale(1) rotate(45deg); }
+.mbtn:focus-visible { outline: 2px dashed var(--red); outline-offset: 2px; }
+.title-keys { margin-top: 22px; font: 500 13.5px var(--sans); color: var(--ink-2); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+
+/* sheet header */
+.sheet-h { display: flex; justify-content: space-between; align-items: end; gap: 20px; padding-bottom: 14px; margin-bottom: 8px; border-bottom: 2px solid var(--ink); }
+.sheet-h h2 { font: 800 40px/1.1 var(--serif); letter-spacing: -.01em; }
+.sheet-h p { font: 500 13px var(--sans); color: var(--ink-3); }
+
+/* settings */
+.set-grid { display: grid; grid-template-columns: 1fr 300px; gap: 40px; align-items: start; }
+.srow {
+  all: unset; box-sizing: border-box; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 16px; width: 100%;
+  padding: 13px 14px 13px 18px; border-bottom: 1px solid var(--rule); cursor: pointer; position: relative;
+}
+.srow::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; background: var(--red); transform: scaleY(0); transition: transform .1s; }
+.srow:focus, .srow:hover { background: var(--paper-2); }
+.srow:focus::before { transform: scaleY(1); }
+.srow:focus-visible { outline: none; }
+.sl { font: 600 16px var(--sans); }
+.sv { display: flex; align-items: center; gap: 6px; font: 600 14px var(--sans); }
+.sv output { min-width: 150px; text-align: center; }
+.arr { all: unset; cursor: pointer; width: 28px; height: 28px; display: grid; place-items: center; font: 600 18px var(--mono); border: 1.5px solid var(--ink); border-radius: 4px; }
+.arr:hover { background: var(--ink); color: var(--paper); }
+.set-help { position: sticky; top: 0; padding: 20px; background: var(--paper-3); border: 1.5px solid var(--ink); border-radius: 4px; box-shadow: 5px 5px 0 var(--ink); }
+.set-help h3 { font: 800 20px var(--serif); margin-bottom: 10px; }
+.set-help p { font: 400 14px/1.7 var(--sans); color: var(--ink-2); }
+.set-help .keys-hint { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--rule); font: 500 12.5px/1.9 var(--sans); color: var(--ink-3); }
+.remap { margin-top: 16px; padding: 18px; border: 2px solid var(--red); border-radius: 4px; background: var(--paper-3); }
+.remap[hidden] { display: none; }
+.remap p { font: 600 15px var(--sans); margin-bottom: 12px; }
+.remap-slots { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.remap-slots div { text-align: center; padding: 10px 4px; border: 1.5px dashed var(--ink-3); border-radius: 4px; font: 500 13px var(--sans); }
+.remap-slots div b { display: block; font: 600 18px var(--mono); margin-top: 4px; min-height: 22px; }
+.remap-slots div.now { border-style: solid; border-color: var(--red); }
+.remap-err { color: var(--red-ink); font-size: 13px; margin-top: 8px; min-height: 18px; }
+
+/* calibration */
+.calib { text-align: center; max-width: 560px; }
+.calib h2 { font: 800 36px var(--serif); }
+.calib p { font: 400 15px/1.7 var(--sans); color: var(--ink-2); margin-top: 10px; }
+.calib-dot { width: 120px; height: 120px; margin: 40px auto 20px; border-radius: 50%; border: 3px solid var(--ink); display: grid; place-items: center; font: 800 34px var(--serif); }
+.calib-dot.pulse { background: var(--ink); color: var(--paper); }
+.calib-res { font: 600 18px var(--mono); min-height: 28px; }
+.btn-row { display: flex; gap: 12px; justify-content: center; margin-top: 26px; flex-wrap: wrap; }
+.btn {
+  all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 10px;
+  height: 48px; padding: 0 22px; font: 600 15px var(--sans); border: 2px solid var(--ink); border-radius: 4px;
+  background: var(--paper-3); box-shadow: 4px 4px 0 var(--ink); transition: transform .06s, box-shadow .06s;
+}
+.btn:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--ink); }
+.btn:focus-visible { outline: 2px dashed var(--red); outline-offset: 4px; }
+.btn.main { background: var(--red); color: #fff; border-color: var(--ink); }
+.btn.main kbd { background: transparent; color: #fff; border-color: #fff; }
+
+/* result */
+.res-top { display: grid; grid-template-columns: 1fr auto; gap: 30px; align-items: center; padding: 26px 0; border-bottom: 1px solid var(--rule); }
+.res-score { font: 900 84px/1 var(--serif); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.res-note { font: 600 14px var(--sans); color: var(--red-ink); margin-top: 10px; min-height: 20px; }
+.stamp.big { width: 104px; height: 104px; font-size: 36px; }
+.res-stats { display: grid; grid-template-columns: repeat(6, 1fr); border-bottom: 1px solid var(--rule); }
+.res-stats div { padding: 16px 0; }
+.res-stats div + div { padding-left: 16px; border-left: 1px solid var(--rule); }
+.res-stats b { display: block; font: 800 26px var(--serif); font-variant-numeric: tabular-nums; }
+.res-stats span { font: 500 12.5px var(--sans); color: var(--ink-3); }
+.save-row { display: flex; gap: 12px; align-items: end; margin-top: 24px; }
+.save-row label { flex: 1; font: 600 13px var(--sans); color: var(--ink-2); }
+.input {
+  display: block; width: 100%; margin-top: 8px; height: 48px; padding: 0 14px; font: 500 16px var(--sans);
+  background: var(--paper-3); border: 2px solid var(--ink); border-radius: 4px; outline: none; color: var(--ink);
+}
+.input:focus { border-color: var(--red); }
+.res-actions { display: flex; gap: 12px; margin-top: 26px; flex-wrap: wrap; }
+.muted-line { font: 500 13px var(--sans); color: var(--ink-3); margin-top: 16px; }
+
+/* records */
+.rec { width: 100%; border-collapse: collapse; margin-top: 6px; }
+.rec td { padding: 13px 8px; border-bottom: 1px solid var(--rule); font: 500 15px var(--sans); }
+.rec td.n { font: 800 20px var(--serif); width: 50px; color: var(--ink-3); }
+.rec tr.top td.n { color: var(--red); }
+.rec td.s { text-align: right; font: 800 20px var(--serif); font-variant-numeric: tabular-nums; }
+.rec td.g { font: 600 13px var(--sans); color: var(--ink-2); white-space: nowrap; }
+.rec tr.me td { background: var(--paper-2); }
+.rec .who { font-weight: 600; }
+
+@media (max-width: 900px) {
+  body { overflow: auto; }
+  .app { grid-template-columns: 1fr; grid-template-rows: auto 64vh; height: auto; }
+  .stage-col { order: -1; }
+  #stage { height: 34vh; flex: none; }
+  .hud { grid-template-columns: 1fr auto; padding: 14px 16px; gap: 14px; }
+  .meters { grid-column: 1 / -1; max-width: none; }
+  .foot { display: none; }
+  .wrap { padding: 28px 16px; }
+  .title-grid { grid-template-columns: 1fr; gap: 24px; }
+  .title-v { writing-mode: horizontal-tb; font-size: 64px; }
+  .title-v .seal { position: static; display: inline-block; writing-mode: horizontal-tb; vertical-align: middle; margin-left: 10px; }
+  .set-grid { grid-template-columns: 1fr; }
+  .set-help { position: static; }
+  .res-stats { grid-template-columns: repeat(3, 1fr); }
+  .res-score { font-size: 56px; }
+}
+</style>
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+<div id="sr" class="sr-only" aria-live="polite"></div>
+
+<div class="app" id="app">
+  <section class="track-col">
+    <div class="track-head"><span id="modeTag"><b>보통</b></span><span><b id="bpm">105</b> BPM</span></div>
+    <canvas id="track"></canvas>
+    <div class="keys" id="keys"></div>
+  </section>
+
+  <section class="stage-col">
+    <header class="hud">
+      <div>
+        <div class="hud-k">점수</div>
+        <div class="score" id="score">0</div>
+        <div class="score-sub"><span>최고 <b id="best">0</b></span><span id="nextGrade">6급까지 1,500</span></div>
+      </div>
+      <div class="meters">
+        <div class="meter-row">
+          <span class="hud-k">기력</span>
+          <div class="segs" id="hpSegs"></div>
+          <span class="meter-val" id="hpVal">100</span>
+        </div>
+        <div class="meter-row">
+          <span class="hud-k">심안</span>
+          <div>
+            <div class="ticks" id="feverTicks"></div>
+            <div class="fever-drain"><i id="feverDrain"></i></div>
+          </div>
+          <span class="meter-val" id="feverVal">0/15</span>
+        </div>
+      </div>
+      <div class="stamp" id="grade">9급</div>
+    </header>
+    <canvas id="stage"></canvas>
+    <div class="foot">
+      <span>치기 <b id="footKeys">D F J K</b></span>
+      <span>멈춤 <b>Esc</b></span>
+      <span>소리 <b>M</b></span>
+      <span class="tag" id="practiceTag" hidden>연습 중 — 기력이 줄지 않습니다</span>
+    </div>
+  </section>
+</div>
+
+<!-- title -->
+<div class="screen open" id="scrTitle" role="dialog" aria-label="시작 화면">
+  <div class="wrap">
+    <div class="title-grid">
+      <h1 class="title-v">일격필살<span class="seal">리듬검도</span></h1>
+      <div class="title-side">
+        <p class="kicker">북이 울릴 때 친다. 머리, 손목, 허리, 그리고 막기.</p>
+        <nav class="menu">
+          <button class="mbtn" data-nav data-act="play">대련<small>기력이 다하면 끝납니다</small></button>
+          <button class="mbtn" data-nav data-act="practice">연습<small>기력이 줄지 않습니다. 언제든 Esc로 그만둘 수 있습니다</small></button>
+          <button class="mbtn" data-nav data-act="settings">설정<small>키 배치, 난이도, 노트 속도, 타이밍 보정</small></button>
+          <button class="mbtn" data-nav data-act="records">기록</button>
+        </nav>
+        <p class="title-keys">치기 키 <span id="titleKeys"></span> · ↑↓ 선택 · Enter 결정</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="screen" id="scrSettings" role="dialog" aria-label="설정">
+  <div class="wrap">
+    <div class="sheet-h"><h2>설정</h2><p>↑↓ 항목 · ←→ 값 바꾸기 · Esc 돌아가기</p></div>
+    <div class="set-grid">
+      <div>
+        <div id="setRows"></div>
+        <div class="remap" id="remapBox" hidden>
+          <p id="remapPrompt">머리에 쓸 키를 누르세요</p>
+          <div class="remap-slots" id="remapSlots"></div>
+          <div class="remap-err" id="remapErr"></div>
+        </div>
+      </div>
+      <aside class="set-help" aria-live="polite">
+        <h3 id="helpTitle">키 배치</h3>
+        <p id="helpText"></p>
+        <div class="keys-hint" id="helpKeys"></div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<!-- calibration -->
+<div class="screen" id="scrCalib" role="dialog" aria-label="타이밍 측정">
+  <div class="wrap calib">
+    <h2>타이밍 측정</h2>
+    <p id="calibText">북소리가 16번 울립니다. 소리에 맞춰 치기 키 아무거나 누르세요. 화면은 보지 않아도 됩니다.</p>
+    <div class="calib-dot" id="calibDot">–</div>
+    <div class="calib-res" id="calibRes"></div>
+    <div class="btn-row">
+      <button class="btn main" data-nav id="calibApply" hidden>이 값으로 적용</button>
+      <button class="btn" data-nav id="calibRetry">다시 측정</button>
+      <button class="btn" data-nav id="calibCancel">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- pause -->
+<div class="screen dim" id="scrPause" role="dialog" aria-label="일시정지">
+  <div class="wrap" style="max-width:520px">
+    <div class="sheet-h"><h2>멈춤</h2><p>Esc 계속</p></div>
+    <nav class="menu">
+      <button class="mbtn" data-nav data-act="resume">계속</button>
+      <button class="mbtn" data-nav data-act="restart">처음부터</button>
+      <button class="mbtn" data-nav data-act="settings">설정</button>
+      <button class="mbtn" data-nav data-act="quit">그만두기</button>
+    </nav>
+  </div>
+</div>
+
+<!-- result -->
+<div class="screen" id="scrResult" role="dialog" aria-label="결과">
+  <div class="wrap">
+    <div class="sheet-h"><h2 id="resTitle">대련 종료</h2><p id="resMeta">보통 · 105 BPM</p></div>
+    <div class="res-top">
+      <div>
+        <div class="hud-k">점수</div>
+        <div class="res-score" id="resScore">0</div>
+        <div class="res-note" id="resNote"></div>
+      </div>
+      <div class="stamp big" id="resGrade">9급</div>
+    </div>
+    <div class="res-stats">
+      <div><b id="rCombo">0</b><span>최대 콤보</span></div>
+      <div><b id="rAcc">0%</b><span>정확도</span></div>
+      <div><b id="rP">0</b><span>일격</span></div>
+      <div><b id="rG">0</b><span>정타</span></div>
+      <div><b id="rO">0</b><span>유효</span></div>
+      <div><b id="rM">0</b><span>놓침</span></div>
+    </div>
+    <div class="save-row" id="saveRow">
+      <label>기록에 남길 이름
+        <input class="input" id="nick" type="text" maxlength="10" autocomplete="off" placeholder="최대 10자">
+      </label>
+      <button class="btn main" data-nav id="saveBtn">남기기</button>
+    </div>
+    <p class="muted-line" id="saveMsg"></p>
+    <div class="res-actions">
+      <button class="btn main" data-nav id="againBtn">다시 <kbd>Enter</kbd></button>
+      <button class="btn" data-nav id="resRecords">기록 보기</button>
+      <button class="btn" data-nav id="resTitleBtn">처음 화면</button>
+    </div>
+  </div>
+</div>
+
+<!-- records -->
+<div class="screen" id="scrRecords" role="dialog" aria-label="기록">
+  <div class="wrap" style="max-width:760px">
+    <div class="sheet-h"><h2>기록</h2><p>상위 10 · Esc 돌아가기</p></div>
+    <table class="rec"><tbody id="recBody"></tbody></table>
+    <div class="res-actions">
+      <button class="btn" data-nav id="recBack">돌아가기</button>
+      <button class="btn" data-nav id="recReset">기록 지우기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ═════════ utilities ═════════ */
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const perf = () => performance.now() / 1000;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp = (a, b, t) => a + (b - a) * t;
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+function hexRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function rgba(h, a) { const [r, g, b] = hexRgb(h); return `rgba(${r},${g},${b},${a})`; }
+function mix(h1, h2, t) {
+  if (t <= 0) return h1;
+  const a = hexRgb(h1), b = hexRgb(h2);
+  return `rgb(${Math.round(lerp(a[0], b[0], t))},${Math.round(lerp(a[1], b[1], t))},${Math.round(lerp(a[2], b[2], t))})`;
+}
+function rr(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r);
+  c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r);
+  c.arcTo(x, y, x + w, y, r);
+  c.closePath();
+}
+const announce = (t) => { const el = $('#sr'); el.textContent = ''; setTimeout(() => { el.textContent = t; }, 30); };
+
+/* ═════════ constants ═════════ */
+const INK = '#1B1915', PAPER = '#EEE7D9', RED = '#D23A20';
+const SERIF = 'Hahmlet, "Noto Serif KR", serif';
+const SANS = '"IBM Plex Sans KR", system-ui, sans-serif';
+const MONO = '"IBM Plex Mono", ui-monospace, monospace';
+const BRUSH = '"Nanum Brush Script", cursive';
+
+const LANE_NAMES = ['머리', '손목', '허리', '막기'];
+const LANE_ACTION = ['MEN', 'KOTE', 'DO', 'GUARD'];
+// Okabe–Ito based: distinguishable for common colour-vision deficiencies; every lane also has its own shape.
+const PALETTES = {
+  normal: ['#E0562B', '#E8A21C', '#1FA37A', '#3B82D6'],
+  high:   ['#FF6E40', '#FFD43B', '#3CE6AA', '#74BCFF']
+};
+const SHAPE_SVG = [
+  '<circle cx="6" cy="6" r="5.2"/>',
+  '<path d="M6 .4 11.6 6 6 11.6 .4 6Z"/>',
+  '<rect x=".4" y="3.2" width="11.2" height="5.6" rx="1.4"/>',
+  '<path d="M1 1h10v4.2c0 3.2-2.4 5.4-5 6.4-2.6-1-5-3.2-5-6.4Z"/>'
+];
+const LAYOUTS = {
+  DFJK:   { name: 'D F J K', note: '양손', codes: ['KeyD', 'KeyF', 'KeyJ', 'KeyK'],
+            help: '왼손 중지·검지로 D·F, 오른손 검지·중지로 J·K. F와 J의 돌기에 검지를 얹어 두면 손 위치를 잃지 않습니다. 4키 리듬게임에서 가장 많이 쓰는 배치라 처음이라면 이걸 권합니다.' },
+  QWER:   { name: 'Q W E R', note: '왼손', codes: ['KeyQ', 'KeyW', 'KeyE', 'KeyR'],
+            help: '왼손 네 손가락을 모두 씁니다. 머리(Q)를 새끼손가락으로 쳐야 해서 빠른 구간이나 동시치기에서 손이 쉽게 꼬입니다.' },
+  ARROWS: { name: '← ↓ ↑ →', note: '방향키', codes: ['ArrowLeft', 'ArrowDown', 'ArrowUp', 'ArrowRight'],
+            help: '← 머리, ↓ 손목, ↑ 허리, → 막기. 한 손으로만 칠 때나 노트북 키보드에서 편합니다.' },
+  CUSTOM: { name: '직접 지정', note: '', codes: null,
+            help: '아래 "키 직접 지정"에서 고른 키를 씁니다. 한 손, 발판, 보조 키보드 등 원하는 키를 자유롭게 쓸 수 있습니다.' }
+};
+const DIFF = {
+  easy:   { name: '쉬움',   win: [0.090, 0.160, 0.230], hpLoss: 8,  bpm: 92,  cap: 124, chords: false, eighths: false, mult: 0.8,
+            desc: '판정 범위가 넓고 동시치기와 반 박자 노트가 나오지 않습니다. 기력도 천천히 줄어듭니다.' },
+  normal: { name: '보통',   win: [0.070, 0.135, 0.200], hpLoss: 14, bpm: 105, cap: 150, chords: true,  eighths: true,  mult: 1,
+            desc: '점수가 오르면 동시치기와 반 박자 노트가 섞여 나옵니다.' },
+  hard:   { name: '어려움', win: [0.050, 0.100, 0.150], hpLoss: 18, bpm: 116, cap: 172, chords: true,  eighths: true,  mult: 1.25,
+            desc: '판정이 좁고 템포가 더 빨리 오릅니다. 점수 1.25배.' }
+};
+const GRADES = [[0, '9급'], [1500, '6급'], [3500, '3급'], [7000, '1급'], [12000, '초단'], [20000, '3단'], [30000, '5단'], [45000, '검성']];
+const FEVER_NEED = 15, FEVER_LEN = 8;
+const KEY_NAMES = {
+  ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: 'Space', Semicolon: ';', Quote: "'",
+  Comma: ',', Period: '.', Slash: '/', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Minus: '-', Equal: '=',
+  Backquote: '`', ShiftLeft: 'L⇧', ShiftRight: 'R⇧', ControlLeft: 'LCtrl', ControlRight: 'RCtrl', AltLeft: 'LAlt', AltRight: 'RAlt'
+};
+function keyLabel(code) {
+  if (KEY_NAMES[code]) return KEY_NAMES[code];
+  if (code.startsWith('Key')) return code.slice(3);
+  if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Numpad')) return 'N' + code.slice(6);
+  return code;
+}
+function gradeOf(s) { let g = GRADES[0][1]; for (const [t, n] of GRADES) if (s >= t) g = n; return g; }
+function nextGradeText(s) {
+  for (const [t, n] of GRADES) if (s < t) return `${n}까지 ${(t - s).toLocaleString()}`;
+  return '최고 경지';
+}
+
+/* ═════════ settings ═════════ */
+const prefersReduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+const DEFAULTS = { layout: 'DFJK', custom: ['KeyD', 'KeyF', 'KeyJ', 'KeyK'], difficulty: 'normal', speed: 5, offset: 0, volume: 7, effects: !prefersReduced, palette: 'normal' };
+const SET_KEY = 'kendo_settings_v3';
+let settings = (() => {
+  try { return Object.assign({}, DEFAULTS, JSON.parse(store.get(SET_KEY) || '{}')); }
+  catch (e) { return Object.assign({}, DEFAULTS); }
+})();
+if (!LAYOUTS[settings.layout]) settings.layout = 'DFJK';
+if (!DIFF[settings.difficulty]) settings.difficulty = 'normal';
+const saveSettings = () => store.set(SET_KEY, JSON.stringify(settings));
+const laneCodes = () => settings.layout === 'CUSTOM' ? settings.custom : LAYOUTS[settings.layout].codes;
+const colors = () => PALETTES[settings.palette] || PALETTES.normal;
+const travelFor = (speed) => 2.0 - (speed - 1) * 0.15;
+const travelTime = () => travelFor(settings.speed);
+
+/* ═════════ audio ═════════ */
+let actx = null, master = null, muted = false;
+function initAudio() {
+  if (!actx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    actx = new AC();
+    master = actx.createGain();
+    master.connect(actx.destination);
+    applyVolume();
+  }
+  if (actx.state === 'suspended') actx.resume();
+}
+function applyVolume() { if (master) master.gain.value = muted ? 0 : (settings.volume / 10) * 0.95; }
+function tone(f0, f1, type, vol, dur, at) {
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(f0, at);
+  if (f1 && f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, at + dur * 0.85);
+  g.gain.setValueAtTime(vol, at);
+  g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+  o.connect(g); g.connect(master);
+  o.start(at); o.stop(at + dur + 0.02);
+}
+function noise(vol, dur, at, hp) {
+  const n = Math.floor(actx.sampleRate * dur);
+  const buf = actx.createBuffer(1, n, actx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (n * 0.22));
+  const src = actx.createBufferSource(), g = actx.createGain();
+  src.buffer = buf; g.gain.value = vol;
+  if (hp) {
+    const f = actx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = hp;
+    src.connect(f); f.connect(g);
+  } else src.connect(g);
+  g.connect(master);
+  src.start(at);
+}
+function sfx(type, at, combo = 1) {
+  if (muted || settings.volume === 0) return;
+  try {
+    initAudio();
+    if (!actx) return;
+    const t = at || actx.currentTime;
+    switch (type) {
+      case 'don':  tone(150, 46, 'sine', 0.42, 0.24, t); noise(0.05, 0.03, t, 200); break;
+      case 'doko': tone(118, 52, 'sine', 0.2, 0.15, t); break;
+      case 'perfect': { const p = 560 + Math.min(combo, 30) * 12; noise(0.32, 0.06, t, 1800); tone(p, p * 1.5, 'triangle', 0.08, 0.1, t); break; }
+      case 'great':  noise(0.22, 0.05, t, 1400); tone(440, 600, 'triangle', 0.07, 0.09, t); break;
+      case 'good':   noise(0.12, 0.04, t, 1000); break;
+      case 'parry':  tone(1250, 1250, 'square', 0.04, 0.18, t); tone(1870, 1870, 'sine', 0.1, 0.3, t); noise(0.18, 0.04, t, 3000); break;
+      case 'miss':   tone(130, 60, 'sawtooth', 0.11, 0.24, t); break;
+      case 'whiff':  noise(0.06, 0.07, t, 600); break;
+      case 'fever':  [293.66, 440, 587.33, 880].forEach((f, i) => tone(f, f, 'triangle', 0.1, 0.55, t + i * 0.05)); break;
+      case 'tick':   tone(880, 880, 'sine', 0.06, 0.05, t); break;
+    }
+  } catch (e) {}
+}
+
+/* ═════════ records ═════════ */
+const REC_KEY = 'kendo_rhythm_records_v3', NICK_KEY = 'kendo_rhythm_last_nick';
+const DEFAULT_REC = [
+  { id: 'b1', name: '도장 사범', score: 46200, combo: 61, diff: 'hard' },
+  { id: 'b2', name: '박 선배', score: 31500, combo: 44, diff: 'normal' },
+  { id: 'b3', name: '청룡관', score: 20800, combo: 33, diff: 'normal' },
+  { id: 'b4', name: '새벽반', score: 12600, combo: 22, diff: 'normal' },
+  { id: 'b5', name: '죽도 한 자루', score: 7400, combo: 15, diff: 'easy' },
+  { id: 'b6', name: '첫날', score: 2100, combo: 8, diff: 'easy' }
+];
+let memRec = null;
+function getRecords() {
+  const raw = store.get(REC_KEY);
+  if (raw) { try { const r = JSON.parse(raw); if (Array.isArray(r)) return r; } catch (e) {} }
+  return (memRec || DEFAULT_REC).slice();
+}
+function setRecords(r) { memRec = r; store.set(REC_KEY, JSON.stringify(r)); }
+const bestRecord = () => { const r = getRecords(); return r.length ? r[0].score : 0; };
+
+/* ═════════ game state ═════════ */
+const game = {
+  state: 'TITLE', practice: false, diff: 'normal',
+  t0: 0, time: 0, pauseAt: 0, resumeEnd: 0,
+  score: 0, best: bestRecord(), hp: 100, combo: 0, maxCombo: 0,
+  counts: { perfect: 0, great: 0, good: 0, miss: 0 },
+  fever: false, feverEnd: 0, feverCharge: 0,
+  bpm: 105, nextBeatTime: 0, beatIndex: 0, beats: [], steps: [], notes: [],
+  events: [], hitStop: 0, shakeT: 0, shakeI: 0, punch: 0, beatPulse: 0,
+  grade: '9급', saved: false, savedId: null, peakBpm: 105
+};
+const keyDown = [false, false, false, false];
+const laneFlash = [0, 0, 0, 0];
+let tfx = { rings: [], parts: [], pops: [], judge: null, count: null };
+let sfxList = { sparks: [], rings: [], kiai: [], pops: [], dots: [] };
+
+/* ═════════ fighters: poses & motions ═════════ */
+const POSE_KEYS = ['x', 'crouch', 'lean', 'head', 'hx', 'hy', 'sw', 'stride'];
+const P_IDLE  = { x: 0, crouch: 0, lean: 0.05, head: 0, hx: 22, hy: 30, sw: -0.32, stride: 46 };   // 중단세
+const P_JODAN = { x: 6, crouch: 2, lean: -0.04, head: 0, hx: 4, hy: -36, sw: -2.3, stride: 44 };   // 상단세 (사범 반격 예고)
+const mk = (o, base = P_IDLE) => Object.assign({}, base, o);
+// [time(s), pose | 'BASE']  — the first segment blends from wherever the fighter currently is.
+const ANIMS = {
+  // 머리: 크게 치켜들었다가 뛰어들며 정수리를 내려친다
+  MEN: [
+    [0.05, mk({ hx: 6, hy: -34, sw: -2.25, lean: -0.06, crouch: 2 })],
+    [0.11, mk({ x: 58, hx: 36, hy: -16, sw: -0.1, lean: 0.16, stride: 84 })],
+    [0.26, mk({ x: 66, hx: 36, hy: -14, sw: -0.04, lean: 0.12, stride: 80 })],
+    [0.5, 'BASE']
+  ],
+  // 손목: 작게 들어 짧고 빠르게 손목을 끊어 친다
+  KOTE: [
+    [0.04, mk({ hx: 16, hy: -4, sw: -1.15 })],
+    [0.09, mk({ x: 48, hx: 32, hy: 14, sw: 0.14, lean: 0.12, stride: 76 })],
+    [0.2, mk({ x: 52, hx: 32, hy: 15, sw: 0.16, lean: 0.1, stride: 72 })],
+    [0.4, 'BASE']
+  ],
+  // 허리: 머리 위로 돌려 들고 사선으로 허리를 베며 빠져나간다
+  DO: [
+    [0.05, mk({ hx: -2, hy: -26, sw: -1.95, lean: 0 })],
+    [0.11, mk({ x: 60, hx: 30, hy: 8, sw: 0.14, lean: 0.25, stride: 86, crouch: 6 })],
+    [0.22, mk({ x: 86, hx: 22, hy: 18, sw: 0.55, lean: 0.2, stride: 80, crouch: 6 })],
+    [0.52, 'BASE']
+  ],
+  // 막기: 죽도를 머리 위로 가로 들어 내려치는 칼을 받는다
+  GUARD: [
+    [0.04, mk({ x: -6, hx: 18, hy: -18, sw: -0.6 })],
+    [0.08, mk({ x: -14, hx: 22, hy: -38, sw: -0.1, crouch: 6, lean: -0.06 })],
+    [0.26, mk({ x: -16, hx: 22, hy: -36, sw: -0.12, crouch: 6, lean: -0.06 })],
+    [0.46, 'BASE']
+  ],
+  HURT: [
+    [0.07, mk({ x: -18, lean: -0.28, head: -0.35, hx: 14, hy: 26, sw: 0.15 })],
+    [0.32, mk({ x: -20, lean: -0.18, head: -0.18, hx: 16, hy: 28, sw: 0.05 })],
+    [0.6, 'BASE']
+  ],
+  R_ATTACK: [
+    [0.04, P_JODAN],
+    [0.1, mk({ x: 58, hx: 36, hy: -16, sw: -0.1, lean: 0.16, stride: 84 })],
+    [0.3, mk({ x: 60, hx: 36, hy: -14, sw: -0.04, lean: 0.12, stride: 80 })],
+    [0.6, 'BASE']
+  ],
+  R_BLOCKED: [
+    [0.03, P_JODAN],
+    [0.08, mk({ x: 26, hx: 30, hy: -18, sw: -0.42, lean: 0.08, stride: 64 })],
+    [0.17, mk({ x: 8, hx: 22, hy: -26, sw: -1.05, lean: -0.05 })],
+    [0.48, 'BASE']
+  ],
+  HIT_MEN: [
+    [0.05, mk({ x: -14, lean: -0.3, head: -0.5, hx: 16, hy: 24, sw: -0.12, crouch: 3 })],
+    [0.3, mk({ x: -18, lean: -0.16, head: -0.2 })],
+    [0.58, 'BASE']
+  ],
+  HIT_KOTE: [
+    [0.05, mk({ x: -8, hx: 2, hy: 2, sw: -1.4, lean: -0.08 })],
+    [0.26, mk({ x: -10, hx: 8, hy: 10, sw: -1.0 })],
+    [0.5, 'BASE']
+  ],
+  HIT_DO: [
+    [0.05, mk({ x: -16, lean: 0.36, crouch: 10, hx: 12, hy: 32, sw: 0.32, head: 0.15 })],
+    [0.3, mk({ x: -20, lean: 0.2, crouch: 6 })],
+    [0.58, 'BASE']
+  ]
+};
+const IMPACT_DELAY = { MEN: 0.1, KOTE: 0.08, DO: 0.1, GUARD: 0.06 };
+
+const LOOK = {
+  player: { hakama: '#27304A', gi: '#2E3956', bogu: '#1F2537', dou: '#7E2B1C', edge: '#C49A3A', tasuki: '#D23A20', zekken: '수', himo: '#C9A24A' },
+  rival:  { hakama: '#ECE6DA', gi: '#F5F1E8', bogu: '#1D1C1A', dou: '#2A2724', edge: '#8F7D55', tasuki: '#F8F5EE', zekken: '사', himo: '#7C6AA8' }
+};
+function makeFighter(isPlayer) {
+  return { isPlayer, look: isPlayer ? LOOK.player : LOOK.rival, pose: Object.assign({}, P_IDLE),
+           anim: null, animName: '', t: 0, from: null, bob: 0, flash: 0, trail: [], pts: null, trailColor: INK };
+}
+const player = makeFighter(true);
+const rival = makeFighter(false);
+
+function playAnim(f, name) {
+  f.anim = ANIMS[name]; f.animName = name; f.t = 0;
+  f.from = Object.assign({}, f.pose);
+}
+function guardIncoming() {
+  if (game.state !== 'PLAYING' && game.state !== 'RESUME') return false;
+  const tr = travelTime();
+  return game.notes.some(n => !n.judged && n.lane === 3 && n.target - game.time < tr * 0.85 && n.target - game.time > -0.05);
+}
+function baseOf(f) { return (!f.isPlayer && guardIncoming()) ? P_JODAN : P_IDLE; }
+function stepFighter(f, dt) {
+  const base = baseOf(f);
+  if (f.anim) {
+    f.t += dt;
+    let prevT = 0, prev = f.from, done = true;
+    for (const [kt, kp] of f.anim) {
+      const target = kp === 'BASE' ? base : kp;
+      if (f.t <= kt) {
+        const u = easeOut(clamp((f.t - prevT) / (kt - prevT), 0, 1));
+        for (const k of POSE_KEYS) f.pose[k] = lerp(prev[k], target[k], u);
+        done = false;
+        break;
+      }
+      prevT = kt; prev = target;
+    }
+    if (done) { f.anim = null; f.animName = ''; Object.assign(f.pose, base); }
+  } else {
+    const k = 1 - Math.exp(-dt * 9);
+    for (const key of POSE_KEYS) f.pose[key] += (base[key] - f.pose[key]) * k;
+  }
+  f.bob *= Math.exp(-dt * 7);
+  f.flash = Math.max(0, f.flash - dt * 4);
+}
+
+/* ═════════ canvases ═════════ */
+const trackCv = $('#track'), tctx = trackCv.getContext('2d');
+const stageCv = $('#stage'), sctx = stageCv.getContext('2d');
+const T = { w: 0, h: 0, dpr: 1 }, S = { w: 0, h: 0, dpr: 1 };
+let bgNormal = document.createElement('canvas'), bgFever = document.createElement('canvas');
+function fitCanvas(cv, dim) {
+  dim.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect();
+  dim.w = r.width; dim.h = r.height;
+  cv.width = Math.max(1, Math.round(r.width * dim.dpr));
+  cv.height = Math.max(1, Math.round(r.height * dim.dpr));
+}
+function resizeAll() {
+  fitCanvas(trackCv, T);
+  fitCanvas(stageCv, S);
+  renderStageBg(bgNormal, false);
+  renderStageBg(bgFever, true);
+}
+new ResizeObserver(resizeAll).observe(document.getElementById('app'));
+resizeAll();
+
+function stageGround() { return S.h * 0.84; }
+function stageScale() { return clamp(Math.min(S.w / 560, S.h / 320), 0.6, 1.9); }
+
+function mulberry(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function renderStageBg(cv, fever) {
+  const w = S.w, h = S.h, d = S.dpr;
+  cv.width = Math.max(1, Math.round(w * d)); cv.height = Math.max(1, Math.round(h * d));
+  if (w < 10) return;
+  const c = cv.getContext('2d');
+  c.setTransform(d, 0, 0, d, 0, 0);
+  const ground = stageGround(), s = stageScale();
+
+  // enso — a single dry-brush circle behind the fighters
+  const rnd = mulberry(11);
+  const cx = w / 2, cy = ground - 150 * s, R = Math.min(w * 0.3, h * 0.42);
+  const inkCol = fever ? '210,58,32' : '27,25,21';
+  for (let i = 0; i < 340; i++) {
+    const u = i / 339, a = -1.75 + Math.PI * 1.84 * u;
+    const width = R * 0.12 * (1 - 0.7 * u) * (0.8 + rnd() * 0.35);
+    const rad = R + Math.sin(u * 7) * R * 0.015 + (rnd() - 0.5) * 2;
+    c.fillStyle = `rgba(${inkCol},${0.05 + 0.03 * (1 - u)})`;
+    c.beginPath();
+    c.ellipse(cx + Math.cos(a) * rad, cy + Math.sin(a) * rad, width * 0.5, width * 0.36, a, 0, Math.PI * 2);
+    c.fill();
+    if (u > 0.82 && rnd() < 0.5) {
+      c.fillStyle = `rgba(${inkCol},0.06)`;
+      c.fillRect(cx + Math.cos(a) * (rad + (rnd() - 0.5) * width), cy + Math.sin(a) * (rad + (rnd() - 0.5) * width), 2, 2);
+    }
+  }
+
+  // hanging scroll: 평상심 (平常心)
+  const sw = 40 * Math.min(s, 1.3), sh = 170 * Math.min(s, 1.3), sx = w - sw - 32, sy = 22;
+  if (w > 420) {
+    c.fillStyle = 'rgba(246,241,231,0.9)'; c.fillRect(sx, sy, sw, sh);
+    c.strokeStyle = 'rgba(27,25,21,0.55)'; c.lineWidth = 1.2; c.strokeRect(sx, sy, sw, sh);
+    c.fillStyle = 'rgba(27,25,21,0.75)'; c.fillRect(sx - 4, sy - 4, sw + 8, 5); c.fillRect(sx - 4, sy + sh, sw + 8, 5);
+    c.fillStyle = fever ? 'rgba(168,42,19,0.85)' : 'rgba(27,25,21,0.8)';
+    c.font = `800 ${Math.round(sw * 0.55)}px ${SERIF}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    ['평', '상', '심'].forEach((ch, i) => c.fillText(ch, sx + sw / 2, sy + sh * (0.24 + i * 0.24)));
+    c.fillStyle = RED; c.fillRect(sx + sw / 2 - 5, sy + sh - 20, 10, 10);
+  }
+
+  // floor boards
+  c.fillStyle = fever ? 'rgba(160,70,40,0.10)' : 'rgba(120,86,50,0.09)';
+  c.fillRect(0, ground, w, h - ground);
+  c.save();
+  c.beginPath(); c.rect(0, ground, w, h - ground); c.clip();
+  c.strokeStyle = 'rgba(90,64,40,0.16)'; c.lineWidth = 1;
+  const vx = w / 2, vy = ground - h * 0.9;
+  for (let x = -w; x <= w * 2; x += 46 * s) { c.beginPath(); c.moveTo(vx + (x - vx) * 0.25, ground); c.lineTo(x, h + 4); c.stroke(); }
+  for (let k = 1; k < 6; k++) { const y = ground + (h - ground) * Math.pow(k / 6, 1.6); c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+  c.restore();
+  c.strokeStyle = 'rgba(27,25,21,0.6)'; c.lineWidth = 2;
+  c.beginPath(); c.moveTo(0, ground); c.lineTo(w, ground); c.stroke();
+  // shiai-jo start lines
+  c.fillStyle = 'rgba(246,241,231,0.85)';
+  c.fillRect(w / 2 - 130 * s, ground + 8 * s, 34 * s, 4 * s);
+  c.fillRect(w / 2 + 96 * s, ground + 8 * s, 34 * s, 4 * s);
+}
+
+/* ═════════ fighter drawing ═════════ */
+function drawArm(c, s0, h, colr) {
+  const L1 = 23, L2 = 23;
+  const dx = h.x - s0.x, dy = h.y - s0.y;
+  const d = clamp(Math.hypot(dx, dy), 1, L1 + L2 - 0.01);
+  const base = Math.atan2(dy, dx);
+  const a = Math.acos(clamp((L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), -1, 1));
+  const e1 = { x: s0.x + Math.cos(base + a) * L1, y: s0.y + Math.sin(base + a) * L1 };
+  const e2 = { x: s0.x + Math.cos(base - a) * L1, y: s0.y + Math.sin(base - a) * L1 };
+  const e = e1.y > e2.y ? e1 : e2;
+  c.beginPath(); c.moveTo(s0.x, s0.y); c.lineTo(e.x, e.y); c.lineTo(h.x, h.y);
+  c.strokeStyle = INK; c.lineWidth = 12; c.stroke();
+  c.strokeStyle = colr; c.lineWidth = 9; c.stroke();
+}
+function drawKote(c, p, L) {
+  c.fillStyle = L.bogu; c.strokeStyle = INK; c.lineWidth = 1.5;
+  c.beginPath(); c.arc(p.x, p.y, 6.5, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.18)'; c.lineWidth = 1;
+  c.beginPath(); c.arc(p.x, p.y, 3.5, 0.3, 2.6); c.stroke();
+}
+function drawShinai(c, back, hand, u, f) {
+  const end = { x: back.x - u.x * 6, y: back.y - u.y * 6 };
+  const tsuba = { x: hand.x + u.x * 6, y: hand.y + u.y * 6 };
+  const tip = { x: hand.x + u.x * 92, y: hand.y + u.y * 92 };
+  const line = (a, b, w, col) => { c.beginPath(); c.moveTo(a.x, a.y); c.lineTo(b.x, b.y); c.strokeStyle = col; c.lineWidth = w; c.stroke(); };
+  if (f.isPlayer && game.fever) line(tsuba, tip, 11, 'rgba(210,58,32,0.35)');
+  line(tsuba, tip, 6.5, INK);
+  line(tsuba, tip, 4, '#D9BF7E');
+  const sk = { x: tip.x - u.x * 7, y: tip.y - u.y * 7 };
+  line(sk, tip, 5, '#F6F1E6');
+  const ny = { x: hand.x + u.x * 64, y: hand.y + u.y * 64 };
+  c.beginPath(); c.moveTo(ny.x - u.y * 3.5, ny.y + u.x * 3.5); c.lineTo(ny.x + u.y * 3.5, ny.y - u.x * 3.5); c.strokeStyle = INK; c.lineWidth = 2; c.stroke();
+  line(end, tsuba, 7, INK);
+  line(end, tsuba, 5, '#F2EDE2');
+  c.save(); c.translate(tsuba.x, tsuba.y); c.rotate(Math.atan2(u.y, u.x));
+  c.fillStyle = INK; c.beginPath(); c.ellipse(0, 0, 2.4, 7.5, 0, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+function drawFighter(c, f, cx, ground, s, dir, time) {
+  const p = f.pose, L = f.look;
+  const W = (lx, ly) => ({ x: cx + dir * s * lx, y: ground + s * ly });
+  c.save();
+  c.translate(cx, ground);
+  c.scale(dir * s, s);
+  c.lineJoin = 'round'; c.lineCap = 'round';
+
+  const breathe = Math.sin(time * 2.6 + (f.isPlayer ? 0 : 1.9));
+  const hip = { x: p.x, y: -72 + p.crouch + f.bob * 3 + breathe * 0.6 };
+  const fF = p.x + p.stride * 0.55, fB = p.x - p.stride * 0.45;
+  const sh = { x: hip.x + Math.sin(p.lean) * 42, y: hip.y - Math.cos(p.lean) * 42 };
+  const ha = p.lean + p.head;
+  const hd = { x: sh.x + Math.sin(ha) * 19 + Math.cos(ha) * 3, y: sh.y - Math.cos(ha) * 19 + Math.sin(ha) * 3 };
+  const hand = { x: sh.x + p.hx, y: sh.y + p.hy };
+  const u = { x: Math.cos(p.sw), y: Math.sin(p.sw) };
+  const back = { x: hand.x - u.x * 13, y: hand.y - u.y * 13 };
+  const fl = f.flash;
+  const white = '#FFFFFF';
+
+  // floor shadow
+  c.fillStyle = 'rgba(27,25,21,0.16)';
+  c.beginPath(); c.ellipse(p.x, 1, 46, 6, 0, 0, Math.PI * 2); c.fill();
+
+  // tasuki ribbon (red / white marker on the back)
+  const bk = { x: lerp(hip.x, sh.x, 0.5) - 13, y: lerp(hip.y, sh.y, 0.5) };
+  const wave = Math.sin(time * 7 + (f.isPlayer ? 0 : 2)) * 4 - p.x * 0.05;
+  c.beginPath(); c.moveTo(bk.x, bk.y);
+  c.quadraticCurveTo(bk.x - 14, bk.y + 8 + wave, bk.x - 22, bk.y + 24 + wave * 0.5);
+  c.strokeStyle = INK; c.lineWidth = 7.5; c.stroke();
+  c.strokeStyle = L.tasuki; c.lineWidth = 5; c.stroke();
+
+  // far arm (left hand on the end of the hilt)
+  drawArm(c, { x: sh.x - 4, y: sh.y + 3 }, back, mix(L.gi, INK, 0.25));
+
+  // hakama
+  c.fillStyle = L.hakama; c.strokeStyle = INK; c.lineWidth = 1.7;
+  c.beginPath();
+  c.moveTo(hip.x - 15, hip.y + 2); c.lineTo(hip.x + 15, hip.y + 2);
+  c.lineTo(fF + 15, -1); c.lineTo(fF - 9, -1);
+  c.lineTo(lerp(fB, fF, 0.5), hip.y + 46);
+  c.lineTo(fB + 9, -1); c.lineTo(fB - 15, -1);
+  c.closePath(); c.fill(); c.stroke();
+  c.strokeStyle = f.isPlayer ? 'rgba(255,255,255,0.14)' : 'rgba(27,25,21,0.16)'; c.lineWidth = 1.2;
+  c.beginPath();
+  c.moveTo(hip.x + 6, hip.y + 6); c.lineTo(fF + 3, -2);
+  c.moveTo(hip.x - 6, hip.y + 6); c.lineTo(fB - 3, -2);
+  c.stroke();
+  // feet
+  c.fillStyle = '#DDB089'; c.strokeStyle = INK; c.lineWidth = 1.2;
+  c.beginPath(); c.ellipse(fF + 7, -2, 9, 3.4, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.beginPath(); c.ellipse(fB + 3, -2, 8, 3.2, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+
+  // torso: keikogi, dō, tare
+  c.save();
+  c.translate(hip.x, hip.y); c.rotate(p.lean);
+  rr(c, -14, -47, 28, 50, 9);
+  c.fillStyle = L.gi; c.fill(); c.strokeStyle = INK; c.lineWidth = 1.7; c.stroke();
+  // dō (chest protector)
+  c.beginPath();
+  c.moveTo(-3, -36); c.quadraticCurveTo(21, -35, 20, -15); c.quadraticCurveTo(19, 1, 3, 3); c.lineTo(-3, 3); c.closePath();
+  c.fillStyle = mix(L.dou, white, fl * 0.55); c.fill(); c.strokeStyle = INK; c.stroke();
+  c.beginPath(); c.moveTo(1, -33); c.quadraticCurveTo(17, -31, 16.5, -15); c.strokeStyle = L.edge; c.lineWidth = 1.3; c.stroke();
+  // mune (upper chest)
+  rr(c, -4, -46, 19, 12, 3); c.fillStyle = L.bogu; c.fill(); c.strokeStyle = INK; c.lineWidth = 1.4; c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.2)'; c.lineWidth = 0.8;
+  c.beginPath(); for (let i = 0; i < 4; i++) { c.moveTo(-2, -43 + i * 2.6); c.lineTo(13, -43 + i * 2.6); } c.stroke();
+  // tare (waist flaps) with name tag
+  c.fillStyle = L.bogu; c.strokeStyle = INK; c.lineWidth = 1.3;
+  [[-13, 2, 9, 19], [-3, 2, 11, 22], [9, 2, 9, 19]].forEach(([x, y, w, h]) => { rr(c, x, y, w, h, 2); c.fill(); c.stroke(); });
+  c.fillStyle = '#F4EFE4'; c.fillRect(-1.5, 4.5, 7, 14);
+  c.fillStyle = INK; c.font = `800 6.5px ${SERIF}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(L.zekken, 2, 11.5);
+  c.restore();
+
+  // men (helmet)
+  c.save();
+  c.translate(hd.x, hd.y); c.rotate(ha);
+  c.fillStyle = L.bogu; c.strokeStyle = INK; c.lineWidth = 1.4;
+  c.beginPath(); c.moveTo(-9, 6); c.lineTo(-17, 24); c.lineTo(3, 25); c.lineTo(6, 9); c.closePath(); c.fill(); c.stroke();
+  const hw = Math.sin(time * 6 + (f.isPlayer ? 1 : 3)) * 3 - p.x * 0.06;
+  c.strokeStyle = L.himo; c.lineWidth = 2.2;
+  c.beginPath(); c.moveTo(-13, -3); c.quadraticCurveTo(-24, -2 + hw, -32, 4 + hw); c.moveTo(-13, 0); c.quadraticCurveTo(-23, 4 + hw, -30, 11 + hw * 0.6); c.stroke();
+  c.beginPath(); c.arc(0, 0, 14.5, 0, Math.PI * 2);
+  c.fillStyle = mix(L.bogu, white, fl * 0.6); c.fill(); c.strokeStyle = INK; c.lineWidth = 1.7; c.stroke();
+  c.strokeStyle = 'rgba(255,255,255,0.13)'; c.lineWidth = 0.9;
+  c.beginPath(); c.arc(0, 0, 10, -2.6, -0.5); c.arc(0, 0, 6, -0.5, -2.6, true); c.stroke();
+  rr(c, 2, -9, 14, 20, 6); c.fillStyle = '#2A2724'; c.fill();
+  c.strokeStyle = '#C8CBCE'; c.lineWidth = 1.5;
+  c.beginPath();
+  c.moveTo(10, -10); c.lineTo(10, 11);
+  for (let y = -6; y <= 8; y += 3.5) { c.moveTo(3.5, y); c.quadraticCurveTo(10, y - 1.2, 16, y); }
+  c.stroke();
+  rr(c, 1, 11, 11, 7, 2); c.fillStyle = L.bogu; c.fill(); c.strokeStyle = INK; c.lineWidth = 1.2; c.stroke();
+  c.restore();
+
+  // shinai, near arm, gloves
+  drawShinai(c, back, hand, u, f);
+  drawArm(c, { x: sh.x + 2, y: sh.y + 2 }, hand, L.gi);
+  drawKote(c, back, L);
+  drawKote(c, hand, L);
+
+  // rival's eyes glint while preparing a counter-attack
+  if (!f.isPlayer && guardIncoming()) {
+    const g = 0.6 + Math.sin(time * 16) * 0.4;
+    c.fillStyle = `rgba(255,214,90,${g})`;
+    c.shadowColor = RED; c.shadowBlur = 12;
+    c.beginPath(); c.arc(hd.x + 9, hd.y - 2, 3, 0, Math.PI * 2); c.fill();
+    c.shadowBlur = 0;
+  }
+  c.restore();
+
+  f.pts = {
+    head: W(hd.x, hd.y - 4), hand: W(hand.x, hand.y), torso: W(hip.x + Math.sin(p.lean) * 20 + 12, hip.y - Math.cos(p.lean) * 20),
+    tip: W(hand.x + u.x * 92, hand.y + u.y * 92), mid: W(hand.x + u.x * 34, hand.y + u.y * 34), blade: W(hand.x + u.x * 70, hand.y + u.y * 70)
+  };
+}
+
+/* ═════════ pattern generator ═════════ */
+const S1 = (...lanes) => lanes.map(l => ({ lane: l, off: 0 }));
+function enqueuePattern() {
+  const d = DIFF[game.diff];
+  const level = Math.floor(game.score / 4000) + (game.diff === 'hard' ? 1 : 0);
+  const r = Math.random();
+  const single = () => Math.floor(Math.random() * 4);
+  if (level === 0) {
+    game.steps.push(S1(pick([0, 1, 2, 0, 3])));
+    if (game.score < 2000 || game.diff === 'easy') game.steps.push([]);
+  } else if (level === 1) {
+    if (r < 0.45) pick([[0, 1], [1, 2], [2, 0], [0, 3]]).forEach(l => game.steps.push(S1(l)));
+    else game.steps.push(S1(single()));
+    if (Math.random() < (game.diff === 'easy' ? 0.45 : 0.2)) game.steps.push([]);
+  } else {
+    const eighth = d.eighths ? (level >= 3 ? 0.25 : 0.12) : 0;
+    if (r < 0.4) {
+      pick([[0, 1, 2], [1, 0, 3], [3, 3, 0], [2, 1, 0]]).forEach(l => game.steps.push(S1(l)));
+    } else if (d.chords && r < 0.58) {
+      game.steps.push(S1(...pick([[0, 2], [1, 3], [0, 1], [2, 3]])));
+    } else if (r < 0.58 + eighth) {
+      const a = single(), b = (a + 1 + Math.floor(Math.random() * 3)) % 4;
+      game.steps.push([{ lane: a, off: 0 }, { lane: b, off: 0.5 }]);
+    } else {
+      game.steps.push(S1(single()));
+    }
+    if (game.diff === 'easy' && Math.random() < 0.35) game.steps.push([]);
+  }
+}
+function planAhead() {
+  const horizon = game.time + travelTime() + 0.3;
+  while (game.nextBeatTime <= horizon) {
+    const interval = 60 / game.bpm;
+    const b = { index: game.beatIndex, time: game.nextBeatTime, strong: game.beatIndex % 4 === 0, sounded: false, fired: false };
+    game.beats.push(b);
+    if (b.index >= 4) {
+      if (!game.steps.length) enqueuePattern();
+      for (const s of game.steps.shift()) {
+        game.notes.push({ lane: s.lane, target: b.time + s.off * interval, judged: false, hit: false, missed: false });
+      }
+    }
+    game.beatIndex++;
+    game.nextBeatTime += interval;
+  }
+}
+
+/* ═════════ game flow ═════════ */
+function startGame(practice) {
+  initAudio();
+  const d = DIFF[settings.difficulty];
+  Object.assign(game, {
+    state: 'PLAYING', practice: !!practice, diff: settings.difficulty,
+    t0: perf() + 0.5, time: -0.5, score: 0, hp: 100, combo: 0, maxCombo: 0,
+    counts: { perfect: 0, great: 0, good: 0, miss: 0 },
+    fever: false, feverEnd: 0, feverCharge: 0,
+    bpm: d.bpm, peakBpm: d.bpm, nextBeatTime: 0, beatIndex: 0, beats: [], steps: [], notes: [],
+    events: [], hitStop: 0, shakeT: 0, punch: 0, grade: '9급', saved: false, savedId: null
+  });
+  game.best = Math.max(game.best, bestRecord());
+  tfx = { rings: [], parts: [], pops: [], judge: null, count: null };
+  sfxList = { sparks: [], rings: [], kiai: [], pops: [], dots: [] };
+  player.anim = rival.anim = null;
+  Object.assign(player.pose, P_IDLE); Object.assign(rival.pose, P_IDLE);
+  closeAllScreens();
+  $('#practiceTag').hidden = !game.practice;
+  $('#modeTag').innerHTML = `<b>${DIFF[game.diff].name}</b>${game.practice ? ' · 연습' : ''}`;
+  updateHUD();
+  announce(`${game.practice ? '연습' : '대련'} 시작. 네 박자 뒤에 첫 노트가 옵니다.`);
+}
+function pauseGame() {
+  if (game.state !== 'PLAYING' && game.state !== 'RESUME') return;
+  if (game.state === 'PLAYING') game.pauseAt = perf();
+  game.state = 'PAUSED';
+  releaseKeys();
+  openScreen('scrPause');
+}
+function resumeGame() {
+  if (game.state !== 'PAUSED') return;
+  closeAllScreens();
+  game.state = 'RESUME';
+  game.resumeEnd = perf() + 1.5;
+  tfx.count = { text: '3', life: 1 };
+}
+function quitGame() {
+  if (game.practice && (game.counts.perfect + game.counts.great + game.counts.good + game.counts.miss) > 0) { endGame(true); return; }
+  game.state = 'TITLE';
+  game.notes = []; game.fever = false;
+  closeAllScreens();
+  openScreen('scrTitle');
+  updateHUD();
+}
+function endGame(quitPractice) {
+  game.state = 'RESULT';
+  game.fever = false;
+  const score = Math.floor(game.score);
+  const prevBest = game.best;
+  if (!game.practice && score > game.best) game.best = score;
+  updateHUD();
+  const c = game.counts, total = c.perfect + c.great + c.good + c.miss;
+  const acc = total ? Math.round(((c.perfect + c.great * 0.7 + c.good * 0.4) / total) * 100) : 0;
+  $('#resTitle').textContent = game.practice ? '연습 끝' : '대련 종료';
+  $('#resMeta').textContent = `${DIFF[game.diff].name} · 최고 ${game.peakBpm} BPM`;
+  $('#resScore').textContent = score.toLocaleString();
+  $('#resGrade').textContent = gradeOf(score);
+  $('#rCombo').textContent = game.maxCombo;
+  $('#rAcc').textContent = acc + '%';
+  $('#rP').textContent = c.perfect; $('#rG').textContent = c.great; $('#rO').textContent = c.good; $('#rM').textContent = c.miss;
+  $('#resNote').textContent = game.practice ? '연습 기록은 남지 않습니다.' : (score > prevBest && score > 0 ? '지금까지의 최고 점수입니다.' : '');
+  $('#saveRow').style.display = game.practice ? 'none' : '';
+  $('#saveMsg').textContent = '';
+  $('#nick').value = store.get(NICK_KEY) || '';
+  announce(`${game.practice ? '연습' : '대련'} 종료. 점수 ${score}점, ${gradeOf(score)}, 정확도 ${acc}퍼센트.`);
+  setTimeout(() => {
+    if (game.state !== 'RESULT') return;
+    openScreen('scrResult');
+    (game.practice ? $('#againBtn') : $('#nick')).focus();
+  }, quitPractice ? 0 : 700);
+}
+function saveRecord() {
+  if (game.saved || game.practice || game.state !== 'RESULT') return;
+  const name = ($('#nick').value || '').trim().slice(0, 10) || '이름 없음';
+  store.set(NICK_KEY, name);
+  const id = 'p' + Date.now();
+  const r = getRecords();
+  r.push({ id, name, score: Math.floor(game.score), combo: game.maxCombo, diff: game.diff });
+  r.sort((a, b) => b.score - a.score);
+  setRecords(r.slice(0, 10));
+  game.saved = true; game.savedId = id;
+  game.best = Math.max(game.best, bestRecord());
+  $('#saveRow').style.display = 'none';
+  const rank = r.findIndex(e => e.id === id) + 1;
+  $('#saveMsg').textContent = rank > 0 && rank <= 10 ? `${rank}위로 남았습니다.` : '10위 안에 들지 못했습니다.';
+  announce($('#saveMsg').textContent);
+  $('#againBtn').focus();
+  updateHUD();
+}
+
+/* ═════════ judging ═════════ */
+function eventTime(e) {
+  const ts = e && typeof e.timeStamp === 'number' ? e.timeStamp : performance.now();
+  return (Math.abs(ts - performance.now()) < 1000 ? ts : performance.now()) / 1000;
+}
+function hit(lane, at) {
+  const d = DIFF[game.diff];
+  const t = (at - game.t0) - settings.offset / 1000;
+  let best = null, bestDiff = Infinity;
+  for (const n of game.notes) {
+    if (n.judged || n.lane !== lane) continue;
+    const df = Math.abs(t - n.target);
+    if (df < bestDiff) { bestDiff = df; best = n; }
+  }
+  const action = LANE_ACTION[lane];
+  const col = colors()[lane];
+  playAnim(player, action);
+  player.trailColor = col;
+  laneFlash[lane] = Math.max(laneFlash[lane], 0.5);
+
+  if (!best || bestDiff > d.win[2]) {
+    sfx('whiff');
+    tfx.pops.push({ lane, text: '헛스윙', life: 1 });
+    return;
+  }
+  best.judged = true; best.hit = true;
+  const signed = t - best.target;
+  const grade = bestDiff <= d.win[0] ? 'perfect' : bestDiff <= d.win[1] ? 'great' : 'good';
+  game.counts[grade]++;
+  game.combo++;
+  game.maxCombo = Math.max(game.maxCombo, game.combo);
+  const base = { perfect: 300, great: 180, good: 80 }[grade];
+  const earned = Math.round(base * (1 + Math.min(game.combo, 50) * 0.06) * (game.fever ? 2 : 1) * d.mult);
+  game.score += earned;
+  if (!game.practice) game.hp = Math.min(100, game.hp + ({ perfect: 2, great: 1, good: 0 })[grade]);
+
+  sfx(action === 'GUARD' ? 'parry' : grade, 0, game.combo);
+
+  // track feedback
+  laneFlash[lane] = 1;
+  tfx.rings.push({ lane, life: 1, color: col });
+  burstTrack(lane, col, grade === 'perfect' ? 16 : 9);
+  const ms = Math.round(signed * 1000);
+  const timing = grade === 'perfect' ? '' : (signed < 0 ? '빠름 ' : '느림 ');
+  const label = { perfect: '일격', great: '정타', good: '유효' }[grade];
+  const jc = { perfect: col, great: PAPER, good: 'rgba(238,231,217,0.6)' }[grade];
+  tfx.judge = { text: label, sub: `${timing}${ms > 0 ? '+' : ''}${ms}ms`, color: jc, life: 1, big: grade === 'perfect' };
+
+  // stage: kiai now, impact a beat of animation later
+  if (player.pts) sfxList.kiai.push({ x: player.pts.head.x - 10, y: player.pts.head.y - 34, text: LANE_NAMES[lane] + '!', life: 1 });
+  const perfect = grade === 'perfect';
+  game.events.push({ at: perf() + IMPACT_DELAY[action], fn: () => impact(action, col, perfect, earned) });
+
+  // fever
+  if (!game.fever) {
+    game.feverCharge++;
+    if (game.feverCharge >= FEVER_NEED) startFever();
+  }
+  const g = gradeOf(Math.floor(game.score));
+  if (g !== game.grade) {
+    game.grade = g;
+    const st = $('#grade'); st.classList.remove('thunk'); void st.offsetWidth; st.classList.add('thunk');
+    announce(`승급, ${g}`);
+  }
+  game.bpm = Math.min(d.cap, d.bpm + Math.floor(game.score / 2200) * 4);
+  game.peakBpm = Math.max(game.peakBpm, game.bpm);
+  updateHUD();
+}
+function impact(action, col, perfect, earned) {
+  if (game.state === 'TITLE') return;
+  const fx = settings.effects;
+  if (action === 'GUARD') {
+    playAnim(rival, 'R_BLOCKED');
+    const p = player.pts ? player.pts.blade : { x: S.w / 2, y: S.h / 2 };
+    sparkBurst(p.x, p.y, '#FFFFFF', 14, 1.2);
+    sparkBurst(p.x, p.y, col, 10, 1);
+    sfxList.rings.push({ x: p.x, y: p.y, r: 8, life: 1, color: col });
+  } else {
+    playAnim(rival, { MEN: 'HIT_MEN', KOTE: 'HIT_KOTE', DO: 'HIT_DO' }[action]);
+    rival.flash = 1;
+    const pts = rival.pts;
+    const p = pts ? (action === 'MEN' ? pts.head : action === 'KOTE' ? pts.hand : pts.torso) : { x: S.w / 2, y: S.h / 2 };
+    sparkBurst(p.x, p.y, col, perfect ? 18 : 10, perfect ? 1.3 : 1);
+    sfxList.rings.push({ x: p.x, y: p.y, r: 10, life: 1, color: col });
+    for (let i = 0; i < (perfect ? 10 : 5); i++) {
+      const a = Math.random() * Math.PI * 2, sp = 1.5 + Math.random() * 4;
+      sfxList.dots.push({ x: p.x, y: p.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1, r: 1.5 + Math.random() * 3, life: 1 });
+    }
+  }
+  const at = rival.pts ? rival.pts.head : { x: S.w * 0.6, y: S.h * 0.3 };
+  sfxList.pops.push({ x: at.x + 20, y: at.y - 40, text: '+' + earned, life: 1, color: perfect ? RED : INK });
+  if (perfect && fx) { game.hitStop = 0.05; game.punch = 1; shake(5, 0.12); }
+  else if (fx) shake(2, 0.07);
+}
+function miss(lane) {
+  const d = DIFF[game.diff];
+  game.combo = 0;
+  game.feverCharge = 0;
+  if (game.fever) { game.fever = false; announce('심안이 닫혔습니다'); }
+  game.counts.miss++;
+  if (!game.practice) game.hp = Math.max(0, game.hp - d.hpLoss);
+  sfx('miss');
+  tfx.rings.push({ lane, life: 1, color: RED });
+  tfx.judge = { text: '놓침', sub: LANE_NAMES[lane], color: '#FF7A5C', life: 1, big: false };
+  playAnim(rival, 'R_ATTACK');
+  game.events.push({
+    at: perf() + 0.09, fn: () => {
+      playAnim(player, 'HURT');
+      player.flash = 1;
+      const p = player.pts ? player.pts.head : { x: S.w * 0.4, y: S.h * 0.4 };
+      sparkBurst(p.x, p.y, RED, 10, 0.9);
+      if (settings.effects) shake(7, 0.2);
+    }
+  });
+  updateHUD();
+  if (game.hp <= 0 && !game.practice) endGame(false);
+}
+function startFever() {
+  game.fever = true;
+  game.feverEnd = game.time + FEVER_LEN;
+  game.feverCharge = 0;
+  sfx('fever');
+  if (settings.effects) shake(8, 0.25);
+  tfx.judge = { text: '심안', sub: `${FEVER_LEN}초 동안 점수 두 배`, color: '#FF7A5C', life: 1.3, big: true };
+  announce('심안 발동. 8초 동안 점수 두 배.');
+}
+
+/* ═════════ effects helpers ═════════ */
+function shake(i, d) { game.shakeI = Math.max(i, game.shakeT > 0 ? game.shakeI : 0); game.shakeT = d; }
+function burstTrack(lane, color, n) {
+  const lw = T.w / 4, x = lane * lw + lw / 2, y = trackJudgeY();
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, sp = 2 + Math.random() * 5;
+    tfx.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, r: 1.4 + Math.random() * 2, color, life: 1, decay: 0.025 + Math.random() * 0.03 });
+  }
+}
+function sparkBurst(x, y, color, n, power) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, sp = (3 + Math.random() * 7) * power;
+    sfxList.sparks.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, color, len: 4 + Math.random() * 8 });
+  }
+}
+
+/* ═════════ per-frame update ═════════ */
+function tickGame() {
+  planAhead();
+  for (const b of game.beats) {
+    if (!b.sounded && b.time <= game.time + 0.12) {
+      b.sounded = true;
+      if (actx) sfx(b.strong ? 'don' : 'doko', actx.currentTime + Math.max(0, b.time - game.time));
+    }
+    if (!b.fired && b.time <= game.time) {
+      b.fired = true;
+      game.beatPulse = 1;
+      player.bob = 1; rival.bob = 1;
+      if (b.index < 4) tfx.count = { text: ['3', '2', '1', '시작'][b.index], life: 1 };
+    }
+  }
+  game.beats = game.beats.filter(b => b.time > game.time - 1.5);
+
+  const win = DIFF[game.diff].win;
+  for (const n of game.notes) {
+    if (!n.judged && game.time - n.target > win[2]) {
+      n.judged = true; n.missed = true;
+      miss(n.lane);
+      if (game.state !== 'PLAYING') return;
+    }
+  }
+  game.notes = game.notes.filter(n => !n.hit && !(n.missed && game.time - n.target > 0.6));
+
+  if (game.fever && game.time >= game.feverEnd) {
+    game.fever = false;
+    announce('심안이 끝났습니다');
+    updateHUD();
+  }
+  if (game.fever) updateFeverHud();
+}
+function tickFx(dt) {
+  const k = dt * 60;
+  for (const p of tfx.parts) { p.x += p.vx * k; p.y += p.vy * k; p.vy += 0.15 * k; p.life -= p.decay * k; }
+  tfx.parts = tfx.parts.filter(p => p.life > 0);
+  tfx.rings = tfx.rings.filter(r => (r.life -= dt * 3.2) > 0);
+  tfx.pops = tfx.pops.filter(p => (p.life -= dt * 2.4) > 0);
+  if (tfx.judge && (tfx.judge.life -= dt * 1.6) <= 0) tfx.judge = null;
+  if (tfx.count && (tfx.count.life -= dt * 1.8) <= 0) tfx.count = null;
+  for (let i = 0; i < 4; i++) laneFlash[i] = Math.max(0, laneFlash[i] - dt * 5);
+  game.beatPulse = Math.max(0, game.beatPulse - dt * 5);
+
+  for (const s of sfxList.sparks) { s.x += s.vx * k; s.y += s.vy * k; s.vx *= Math.pow(0.9, k); s.vy = s.vy * Math.pow(0.9, k) + 0.2 * k; s.life -= dt * 3; }
+  sfxList.sparks = sfxList.sparks.filter(s => s.life > 0);
+  for (const d of sfxList.dots) { d.x += d.vx * k; d.y += d.vy * k; d.vy += 0.25 * k; d.life -= dt * 1.4; }
+  sfxList.dots = sfxList.dots.filter(d => d.life > 0);
+  sfxList.rings = sfxList.rings.filter(r => { r.r += 160 * dt; return (r.life -= dt * 4) > 0; });
+  sfxList.kiai = sfxList.kiai.filter(t => { t.y -= 18 * dt; return (t.life -= dt * 1.7) > 0; });
+  sfxList.pops = sfxList.pops.filter(t => { t.y -= 30 * dt; return (t.life -= dt * 1.3) > 0; });
+
+  if (game.shakeT > 0) game.shakeT -= dt;
+  game.punch = Math.max(0, game.punch - dt * 9);
+}
+function runEvents() {
+  if (!game.events.length) return;
+  const now = perf();
+  const due = game.events.filter(e => e.at <= now);
+  if (!due.length) return;
+  game.events = game.events.filter(e => e.at > now);
+  due.forEach(e => e.fn());
+}
+
+/* ═════════ drawing: track ═════════ */
+function trackJudgeY() { return T.h - 58; }
+function drawShape(c, idx, x, y, r) {
+  c.beginPath();
+  if (idx === 0) c.arc(x, y, r, 0, Math.PI * 2);
+  else if (idx === 1) { c.moveTo(x, y - r * 1.1); c.lineTo(x + r * 1.1, y); c.lineTo(x, y + r * 1.1); c.lineTo(x - r * 1.1, y); c.closePath(); }
+  else if (idx === 2) rr(c, x - r * 1.2, y - r * 0.5, r * 2.4, r, r * 0.3);
+  else { c.moveTo(x - r, y - r * 0.9); c.lineTo(x + r, y - r * 0.9); c.lineTo(x + r, y - r * 0.1); c.quadraticCurveTo(x + r, y + r * 0.7, x, y + r * 1.1); c.quadraticCurveTo(x - r, y + r * 0.7, x - r, y - r * 0.1); c.closePath(); }
+}
+function drawTrack() {
+  const c = tctx, w = T.w, h = T.h;
+  if (w < 10) return;
+  c.setTransform(T.dpr, 0, 0, T.dpr, 0, 0);
+  const pal = colors(), lw = w / 4, jy = trackJudgeY(), t = game.time, tr = travelTime();
+  const hc = settings.palette === 'high';
+  const codes = laneCodes();
+
+  c.fillStyle = '#1A1815'; c.fillRect(0, 0, w, h);
+  if (game.fever) {
+    const g = c.createLinearGradient(0, h, 0, 0);
+    g.addColorStop(0, 'rgba(210,58,32,0.28)'); g.addColorStop(0.6, 'rgba(210,58,32,0.04)'); g.addColorStop(1, 'rgba(210,58,32,0)');
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+  }
+  for (let i = 1; i < 4; i += 2) { c.fillStyle = 'rgba(238,231,217,0.025)'; c.fillRect(i * lw, 0, lw, h); }
+
+  // combo
+  if (game.combo >= 4 && game.state !== 'TITLE') {
+    c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+    c.fillStyle = game.fever ? 'rgba(255,122,92,0.3)' : 'rgba(238,231,217,0.12)';
+    c.font = `900 ${Math.round(Math.min(110, w * 0.26))}px ${SERIF}`;
+    c.fillText(game.combo, w / 2, h * 0.3);
+    c.font = `500 13px ${SANS}`;
+    c.fillText('연속', w / 2, h * 0.3 + 24);
+  }
+
+  // key beams
+  for (let i = 0; i < 4; i++) {
+    const a = Math.max(keyDown[i] ? 0.45 : 0, laneFlash[i]);
+    if (a <= 0) continue;
+    const g = c.createLinearGradient(0, jy, 0, jy - h * 0.55);
+    g.addColorStop(0, rgba(pal[i], 0.3 * a)); g.addColorStop(1, rgba(pal[i], 0));
+    c.fillStyle = g; c.fillRect(i * lw, jy - h * 0.55, lw, h * 0.55);
+  }
+
+  // lane lines
+  c.strokeStyle = 'rgba(238,231,217,0.09)'; c.lineWidth = 1;
+  c.beginPath(); for (let i = 1; i < 4; i++) { c.moveTo(i * lw + 0.5, 0); c.lineTo(i * lw + 0.5, h); } c.stroke();
+
+  // beat lines
+  for (const b of game.beats) {
+    const y = jy - ((b.time - t) / tr) * jy;
+    if (y < 0 || y > jy) continue;
+    c.strokeStyle = b.strong ? 'rgba(238,231,217,0.2)' : 'rgba(238,231,217,0.07)';
+    c.lineWidth = b.strong ? 2 : 1;
+    c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke();
+  }
+
+  // judge line
+  c.fillStyle = 'rgba(238,231,217,0.05)'; c.fillRect(0, jy - 18, w, 36);
+  c.fillStyle = RED; c.fillRect(0, jy - 1.5 - game.beatPulse * 1.5, w, 3 + game.beatPulse * 3);
+
+  // receptors
+  for (let i = 0; i < 4; i++) {
+    const cx = i * lw + lw / 2;
+    rr(c, i * lw + 7, jy - 14, lw - 14, 28, 4);
+    c.fillStyle = keyDown[i] ? rgba(pal[i], 0.35) : 'rgba(26,24,21,0.9)'; c.fill();
+    c.strokeStyle = rgba(pal[i], keyDown[i] ? 1 : 0.7); c.lineWidth = 2; c.stroke();
+    drawShape(c, i, cx - 14, jy, 5);
+    c.fillStyle = pal[i]; c.fill();
+    c.fillStyle = 'rgba(238,231,217,0.75)'; c.font = `600 12px ${MONO}`; c.textAlign = 'left'; c.textBaseline = 'middle';
+    c.fillText(keyLabel(codes[i]), cx - 4, jy + 1);
+  }
+
+  // notes
+  const nh = 26;
+  for (const n of game.notes) {
+    if (n.hit) continue;
+    const y = jy - ((n.target - t) / tr) * jy;
+    if (y < -nh || y > h + nh) continue;
+    const x = n.lane * lw + 5, nw = lw - 10, col = pal[n.lane];
+    c.save();
+    c.globalAlpha = n.missed ? 0.25 : 1;
+    rr(c, x, y - nh / 2, nw, nh, 4);
+    c.fillStyle = n.missed ? '#6B655B' : col; c.fill();
+    if (n.lane === 3 && !n.missed) {
+      c.save(); c.clip();
+      c.strokeStyle = 'rgba(26,24,21,0.22)'; c.lineWidth = 3;
+      c.beginPath(); for (let k = -nh; k < nw + nh; k += 9) { c.moveTo(x + k, y + nh / 2); c.lineTo(x + k + nh, y - nh / 2); } c.stroke();
+      c.restore();
+    }
+    rr(c, x, y - nh / 2, nw, nh, 4);
+    c.strokeStyle = hc ? '#FFFFFF' : 'rgba(26,24,21,0.55)'; c.lineWidth = hc ? 2.5 : 1.5; c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.22)'; c.fillRect(x + 3, y - nh / 2 + 3, nw - 6, 3);
+    drawShape(c, n.lane, x + 16, y, hc ? 6 : 5);
+    c.fillStyle = '#1A1815'; c.fill();
+    if (nw > 70) {
+      c.fillStyle = '#1A1815'; c.font = `700 ${hc ? 14 : 13}px ${SANS}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(LANE_NAMES[n.lane], x + nw / 2 + 6, y + 1);
+    }
+    c.restore();
+  }
+
+  // hit rings
+  for (const r of tfx.rings) {
+    const g = (1 - r.life) * 14;
+    c.globalAlpha = r.life;
+    rr(c, r.lane * lw + 7 - g, jy - 14 - g, lw - 14 + g * 2, 28 + g * 2, 4 + g / 2);
+    c.strokeStyle = r.color; c.lineWidth = 3 * r.life + 0.5; c.stroke();
+  }
+  c.globalAlpha = 1;
+  for (const p of tfx.parts) {
+    c.globalAlpha = Math.max(0, p.life); c.fillStyle = p.color;
+    c.fillRect(p.x - p.r, p.y - p.r, p.r * 2, p.r * 2);
+  }
+  c.globalAlpha = 1;
+  c.font = `500 12px ${SANS}`; c.textAlign = 'center';
+  for (const p of tfx.pops) {
+    c.globalAlpha = p.life; c.fillStyle = 'rgba(238,231,217,0.6)';
+    c.fillText(p.text, p.lane * lw + lw / 2, jy - 32 - (1 - p.life) * 16);
+  }
+  c.globalAlpha = 1;
+
+  // judgement
+  if (tfx.judge) {
+    const j = tfx.judge, pop = 1 + 0.25 * Math.max(0, (j.life - 0.82) / 0.18);
+    c.save();
+    c.globalAlpha = Math.min(1, j.life * 2.2);
+    c.translate(w / 2, h * 0.52); c.scale(pop, pop);
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = `${j.big ? 76 : 60}px ${BRUSH}`;
+    c.fillStyle = j.color; c.fillText(j.text, 0, 0);
+    c.font = `500 12px ${MONO}`; c.fillStyle = 'rgba(238,231,217,0.6)';
+    c.fillText(j.sub, 0, 34);
+    c.restore();
+  }
+
+  // count-in / resume countdown
+  let ct = null;
+  if (game.state === 'RESUME') {
+    const left = game.resumeEnd - perf();
+    ct = { text: String(Math.max(1, Math.ceil(left / 0.5))), life: 1 - ((1.5 - left) % 0.5) / 0.5 };
+  } else if (tfx.count) ct = tfx.count;
+  if (ct) {
+    c.save();
+    c.globalAlpha = clamp(ct.life * 1.5, 0, 1);
+    c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.font = `900 ${ct.text.length > 1 ? 54 : 84}px ${SERIF}`;
+    c.fillStyle = PAPER;
+    c.fillText(ct.text, w / 2, h * 0.42);
+    c.restore();
+  }
+}
+
+/* ═════════ drawing: stage ═════════ */
+function updateTrail(f) {
+  const now = perf();
+  if (f.anim && f.pts) f.trail.push({ t: now, tx: f.pts.tip.x, ty: f.pts.tip.y, mx: f.pts.mid.x, my: f.pts.mid.y });
+  f.trail = f.trail.filter(p => now - p.t < 0.09);
+  if (!f.anim) f.trail.length = 0;
+}
+function drawTrail(c, f) {
+  const now = perf(), tr = f.trail;
+  for (let i = 1; i < tr.length; i++) {
+    const a = tr[i - 1], b = tr[i];
+    if (Math.hypot(b.tx - a.tx, b.ty - a.ty) < 4) continue;
+    const age = 1 - (now - b.t) / 0.09;
+    c.fillStyle = f.isPlayer ? rgba(f.trailColor, 0.4 * age) : `rgba(27,25,21,${0.22 * age})`;
+    c.beginPath(); c.moveTo(a.mx, a.my); c.lineTo(a.tx, a.ty); c.lineTo(b.tx, b.ty); c.lineTo(b.mx, b.my); c.closePath(); c.fill();
+  }
+}
+function drawStage(time) {
+  const c = sctx, w = S.w, h = S.h;
+  if (w < 10) return;
+  c.setTransform(S.dpr, 0, 0, S.dpr, 0, 0);
+  c.clearRect(0, 0, w, h);
+  c.save();
+  if (settings.effects && game.shakeT > 0 && game.state !== 'PAUSED') {
+    c.translate((Math.random() - 0.5) * game.shakeI * 2, (Math.random() - 0.5) * game.shakeI * 2);
+  }
+  if (game.punch > 0) {
+    const z = 1 + game.punch * 0.025;
+    c.translate(w / 2, h * 0.6); c.scale(z, z); c.translate(-w / 2, -h * 0.6);
+  }
+  c.drawImage(game.fever ? bgFever : bgNormal, 0, 0, w, h);
+
+  const ground = stageGround(), s = stageScale(), gap = 100 * s;
+  drawTrail(c, rival);
+  drawFighter(c, rival, w / 2 + gap, ground, s, -1, time);
+  drawTrail(c, player);
+  drawFighter(c, player, w / 2 - gap, ground, s, 1, time);
+  updateTrail(player); updateTrail(rival);
+
+  for (const r of sfxList.rings) {
+    c.globalAlpha = r.life; c.strokeStyle = r.color; c.lineWidth = 3 * r.life + 0.5;
+    c.beginPath(); c.arc(r.x, r.y, r.r, 0, Math.PI * 2); c.stroke();
+  }
+  c.lineCap = 'round';
+  for (const sp of sfxList.sparks) {
+    const v = Math.hypot(sp.vx, sp.vy) || 1;
+    c.globalAlpha = Math.max(0, sp.life); c.strokeStyle = sp.color; c.lineWidth = 2.2;
+    c.beginPath(); c.moveTo(sp.x, sp.y); c.lineTo(sp.x - sp.vx / v * sp.len, sp.y - sp.vy / v * sp.len); c.stroke();
+  }
+  for (const d of sfxList.dots) {
+    c.globalAlpha = Math.max(0, d.life) * 0.8; c.fillStyle = INK;
+    c.beginPath(); c.arc(d.x, d.y, d.r, 0, Math.PI * 2); c.fill();
+  }
+  c.globalAlpha = 1;
+  c.textAlign = 'center'; c.textBaseline = 'middle';
+  for (const k of sfxList.kiai) {
+    const pop = 1 + 0.3 * Math.max(0, (k.life - 0.8) / 0.2);
+    c.save(); c.globalAlpha = Math.min(1, k.life * 2); c.translate(k.x, k.y); c.scale(pop, pop); c.rotate(-0.06);
+    c.font = `${Math.round(38 * Math.min(s, 1.3))}px ${BRUSH}`; c.fillStyle = INK; c.fillText(k.text, 0, 0);
+    c.restore();
+  }
+  for (const p of sfxList.pops) {
+    c.globalAlpha = Math.min(1, p.life * 2); c.fillStyle = p.color;
+    c.font = `800 ${Math.round(17 * Math.min(s, 1.3))}px ${SERIF}`; c.fillText(p.text, p.x, p.y);
+  }
+  c.globalAlpha = 1;
+  c.restore();
+}
+
+/* ═════════ HUD ═════════ */
+const hpSegs = $('#hpSegs'), ticks = $('#feverTicks');
+for (let i = 0; i < 20; i++) hpSegs.appendChild(document.createElement('i'));
+for (let i = 0; i < FEVER_NEED; i++) ticks.appendChild(document.createElement('i'));
+function updateHUD() {
+  const s = Math.floor(game.score);
+  $('#score').textContent = s.toLocaleString();
+  $('#best').textContent = Math.max(game.best, game.practice ? 0 : s).toLocaleString();
+  $('#nextGrade').textContent = nextGradeText(s);
+  $('#grade').textContent = gradeOf(s);
+  $('#bpm').textContent = game.bpm;
+  const hp = Math.round(game.hp);
+  $('#hpVal').textContent = game.practice ? '∞' : hp;
+  const on = Math.ceil(hp / 5);
+  Array.from(hpSegs.children).forEach((el, i) => el.classList.toggle('on', i < on));
+  hpSegs.classList.toggle('low', hp <= 30 && !game.practice);
+  updateFeverHud();
+}
+function updateFeverHud() {
+  document.body.classList.toggle('fever', game.fever);
+  if (game.fever) {
+    const left = Math.max(0, game.feverEnd - game.time);
+    $('#feverDrain').style.width = (left / FEVER_LEN * 100).toFixed(1) + '%';
+    $('#feverVal').textContent = '×2';
+  } else {
+    Array.from(ticks.children).forEach((el, i) => el.classList.toggle('on', i < game.feverCharge));
+    $('#feverVal').textContent = `${game.feverCharge}/${FEVER_NEED}`;
+  }
+}
+function refreshKeys() {
+  const pal = colors(), codes = laneCodes();
+  const keys = $('#keys');
+  keys.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const k = document.createElement('div');
+    k.className = 'key' + (keyDown[i] ? ' down' : '');
+    k.style.setProperty('--lc', pal[i]);
+    k.innerHTML = `<span class="kcap"></span><span class="kname"><svg viewBox="0 0 12 12" aria-hidden="true">${SHAPE_SVG[i]}</svg><span></span></span>`;
+    k.querySelector('.kcap').textContent = keyLabel(codes[i]);
+    k.querySelector('.kname span').textContent = LANE_NAMES[i];
+    keys.appendChild(k);
+  }
+  const txt = codes.map(keyLabel).join(' ');
+  $('#footKeys').textContent = txt;
+  const tk = $('#titleKeys'); tk.innerHTML = '';
+  codes.forEach(cd => { const kb = document.createElement('kbd'); kb.textContent = keyLabel(cd); tk.appendChild(kb); });
+}
+function setKey(lane, down) {
+  keyDown[lane] = down;
+  const el = $('#keys').children[lane];
+  if (el) el.classList.toggle('down', down);
+}
+function releaseKeys() { for (let i = 0; i < 4; i++) setKey(i, false); }
+
+/* ═════════ screens & navigation ═════════ */
+const stack = [];
+function openScreen(id) {
+  const el = document.getElementById(id);
+  const i = stack.indexOf(id); if (i >= 0) stack.splice(i, 1);
+  stack.push(id);
+  el.classList.add('open');
+  el.style.zIndex = 50 + stack.length;
+  if (id === 'scrSettings') renderSettings();
+  if (id === 'scrRecords') renderRecords();
+  const first = el.querySelector('[data-nav]');
+  if (first && id !== 'scrResult') setTimeout(() => first.focus(), 0);
+}
+function closeScreen(id) {
+  const el = document.getElementById(id);
+  el.classList.remove('open');
+  const i = stack.indexOf(id); if (i >= 0) stack.splice(i, 1);
+  const top = stack[stack.length - 1];
+  if (top) { const f = document.getElementById(top).querySelector('[data-nav]'); if (f) f.focus(); }
+}
+function closeAllScreens() {
+  while (stack.length) document.getElementById(stack.pop()).classList.remove('open');
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+}
+const topScreen = () => stack[stack.length - 1] || null;
+function moveFocus(dir) {
+  const top = topScreen(); if (!top) return;
+  const items = Array.from(document.getElementById(top).querySelectorAll('[data-nav]')).filter(e => e.offsetParent !== null && !e.hidden);
+  if (!items.length) return;
+  const i = items.indexOf(document.activeElement);
+  const n = i < 0 ? 0 : (i + dir + items.length) % items.length;
+  items[n].focus();
+}
+function menuAction(act) {
+  switch (act) {
+    case 'play': startGame(false); break;
+    case 'practice': startGame(true); break;
+    case 'settings': openScreen('scrSettings'); break;
+    case 'records': openScreen('scrRecords'); break;
+    case 'resume': resumeGame(); break;
+    case 'restart': startGame(game.practice); break;
+    case 'quit': quitGame(); break;
+  }
+}
+$$('.mbtn').forEach(b => b.addEventListener('click', () => menuAction(b.dataset.act)));
+
+/* ═════════ settings UI ═════════ */
+const SET_ROWS = [
+  { key: 'layout', label: '키 배치', type: 'enum', options: ['DFJK', 'QWER', 'ARROWS', 'CUSTOM'],
+    fmt: v => LAYOUTS[v].name + (LAYOUTS[v].note ? ` · ${LAYOUTS[v].note}` : ''), help: v => LAYOUTS[v].help },
+  { key: 'remap', label: '키 직접 지정', type: 'action', fmt: () => settings.custom.map(keyLabel).join(' '),
+    help: () => '머리 → 손목 → 허리 → 막기 순서로 쓸 키를 하나씩 누릅니다. 끝나면 키 배치가 "직접 지정"으로 바뀝니다. Esc로 취소.' },
+  { key: 'difficulty', label: '난이도', type: 'enum', options: ['easy', 'normal', 'hard'], fmt: v => DIFF[v].name,
+    help: v => DIFF[v].desc + (game.state === 'PAUSED' ? ' 지금 진행 중인 판에는 다음 판부터 적용됩니다.' : '') },
+  { key: 'speed', label: '노트 속도', type: 'num', min: 1, max: 10, step: 1, fmt: v => `${v}  ·  ${travelFor(v).toFixed(2)}초`,
+    help: () => '노트가 맨 위에서 판정선까지 내려오는 시간입니다. 숫자가 낮을수록 천천히 내려와서 미리 읽기 쉽습니다. 속도는 판정에 영향을 주지 않습니다.' },
+  { key: 'offset', label: '타이밍 보정', type: 'num', min: -200, max: 200, step: 5, fmt: v => `${v > 0 ? '+' : ''}${v} ms`,
+    help: () => '정확히 쳤는데도 "느림"이 계속 뜨면 + 쪽으로, "빠름"이 뜨면 − 쪽으로 옮기세요. 블루투스 이어폰은 보통 +100 ~ +200ms가 필요합니다.' },
+  { key: 'calib', label: '타이밍 자동 측정', type: 'action', fmt: () => '시작',
+    help: () => '북소리 16번에 맞춰 키를 누르면 보정값을 대신 계산해 줍니다. 이어폰을 바꿨을 때 한 번 해 두면 좋습니다.' },
+  { key: 'volume', label: '소리 크기', type: 'num', min: 0, max: 10, step: 1, fmt: v => v === 0 ? '끔' : String(v),
+    help: () => '게임 중에는 M 키로 바로 끄고 켤 수 있습니다.' },
+  { key: 'effects', label: '화면 흔들림 · 번쩍임', type: 'enum', options: [true, false], fmt: v => v ? '켜기' : '끄기',
+    help: () => '화면이 흔들리거나 확대되는 연출입니다. 어지럽거나 눈이 피로하면 끄세요. 기기에서 "동작 줄이기"를 켜 두었다면 처음부터 꺼져 있습니다.' },
+  { key: 'palette', label: '노트 색', type: 'enum', options: ['normal', 'high'], fmt: v => v === 'normal' ? '기본' : '고대비',
+    help: () => '노트는 색뿐 아니라 모양(● 머리, ◆ 손목, ▬ 허리, 방패 막기)과 글자로도 구분됩니다. 막기 노트에는 빗금이 있습니다. 고대비는 더 밝은 색과 흰 테두리를 씁니다.' },
+  { key: 'back', label: '돌아가기', type: 'action', fmt: () => 'Esc', help: () => '바뀐 설정은 바로 저장됩니다.' }
+];
+function renderSettings() {
+  const box = $('#setRows');
+  const focusedKey = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.row : null;
+  box.innerHTML = '';
+  for (const row of SET_ROWS) {
+    const isAction = row.type === 'action';
+    const el = document.createElement(isAction ? 'button' : 'div');
+    el.className = 'srow';
+    el.dataset.nav = '';
+    el.dataset.row = row.key;
+    if (!isAction) { el.tabIndex = 0; el.setAttribute('role', 'group'); }
+    const val = isAction ? row.fmt() : row.fmt(settings[row.key]);
+    el.innerHTML = `<span class="sl"></span><span class="sv">${isAction ? '' : '<button class="arr" tabindex="-1" data-d="-1" aria-label="이전 값">‹</button>'}<output></output>${isAction ? '' : '<button class="arr" tabindex="-1" data-d="1" aria-label="다음 값">›</button>'}</span>`;
+    el.querySelector('.sl').textContent = row.label;
+    el.querySelector('output').textContent = val;
+    el.setAttribute('aria-label', `${row.label}: ${val}`);
+    el.addEventListener('focus', () => showHelp(row));
+    el.addEventListener('mouseenter', () => showHelp(row));
+    if (isAction) el.addEventListener('click', () => rowAction(row.key));
+    else {
+      el.addEventListener('click', (e) => {
+        const d = e.target.closest('.arr');
+        changeSetting(row.key, d ? Number(d.dataset.d) : 1);
+      });
+    }
+    box.appendChild(el);
+  }
+  const f = focusedKey && box.querySelector(`[data-row="${focusedKey}"]`);
+  if (f) f.focus();
+  showHelp(SET_ROWS.find(r => r.key === focusedKey) || SET_ROWS[0]);
+}
+function showHelp(row) {
+  $('#helpTitle').textContent = row.label;
+  $('#helpText').textContent = row.help(settings[row.key]);
+  $('#helpKeys').textContent = row.type === 'action' ? 'Enter로 실행' : '←→ 또는 ‹ › 로 바꾸기';
+}
+function changeSetting(key, dir) {
+  const row = SET_ROWS.find(r => r.key === key);
+  if (!row || row.type === 'action') return;
+  if (row.type === 'enum') {
+    const i = row.options.indexOf(settings[key]);
+    settings[key] = row.options[(i + dir + row.options.length) % row.options.length];
+  } else {
+    settings[key] = clamp(settings[key] + dir * row.step, row.min, row.max);
+  }
+  saveSettings();
+  if (key === 'volume') { applyVolume(); sfx('tick'); }
+  if (key === 'layout' || key === 'palette') refreshKeys();
+  renderSettings();
+  showHelp(row);
+}
+function rowAction(key) {
+  if (key === 'remap') startRemap();
+  else if (key === 'calib') startCalib();
+  else if (key === 'back') closeScreen('scrSettings');
+}
+
+/* key remap */
+let remap = null;
+function startRemap() {
+  remap = { codes: [], err: '' };
+  $('#remapBox').hidden = false;
+  renderRemap();
+}
+function renderRemap() {
+  const i = remap.codes.length;
+  $('#remapPrompt').textContent = i < 4 ? `${LANE_NAMES[i]}에 쓸 키를 누르세요` : '완료';
+  $('#remapSlots').innerHTML = '';
+  for (let k = 0; k < 4; k++) {
+    const d = document.createElement('div');
+    d.className = k === i ? 'now' : '';
+    d.textContent = LANE_NAMES[k];
+    const b = document.createElement('b'); b.textContent = remap.codes[k] ? keyLabel(remap.codes[k]) : '';
+    d.appendChild(b);
+    $('#remapSlots').appendChild(d);
+  }
+  $('#remapErr').textContent = remap.err;
+  announce($('#remapPrompt').textContent);
+}
+function remapKey(e) {
+  e.preventDefault();
+  if (e.code === 'Escape') { remap = null; $('#remapBox').hidden = true; renderSettings(); return; }
+  if (['Tab', 'Enter', 'KeyM', 'KeyP', 'MetaLeft', 'MetaRight'].includes(e.code)) { remap.err = '이 키는 다른 기능에 쓰여서 고를 수 없습니다.'; renderRemap(); return; }
+  if (remap.codes.includes(e.code)) { remap.err = '이미 고른 키입니다.'; renderRemap(); return; }
+  remap.err = '';
+  remap.codes.push(e.code);
+  renderRemap();
+  if (remap.codes.length === 4) {
+    settings.custom = remap.codes.slice();
+    settings.layout = 'CUSTOM';
+    saveSettings();
+    refreshKeys();
+    remap = null;
+    setTimeout(() => { $('#remapBox').hidden = true; renderSettings(); const r = $('#setRows [data-row="remap"]'); if (r) r.focus(); }, 500);
+  }
+}
+
+/* calibration */
+const calib = { active: false };
+function startCalib() {
+  initAudio();
+  openScreen('scrCalib');
+  Object.assign(calib, { active: true, start: perf() + 1.0, interval: 0.6, n: 16, taps: [], done: false, result: null });
+  $('#calibApply').hidden = true;
+  $('#calibRes').textContent = '';
+  $('#calibText').textContent = '북소리가 16번 울립니다. 소리에 맞춰 치기 키 아무거나 누르세요. 화면은 보지 않아도 됩니다.';
+  if (actx) {
+    const base = actx.currentTime + (calib.start - perf());
+    for (let i = 0; i < calib.n; i++) sfx(i % 4 === 0 ? 'don' : 'doko', base + i * calib.interval);
+  }
+}
+function calibTap(e) {
+  if (!calib.active || calib.done) return;
+  const t = eventTime(e);
+  const i = Math.round((t - calib.start) / calib.interval);
+  if (i >= 2 && i < calib.n) calib.taps.push(t - (calib.start + i * calib.interval));
+}
+function tickCalib() {
+  const now = perf();
+  const k = (now - calib.start) / calib.interval;
+  const dot = $('#calibDot');
+  if (k < 0) { dot.textContent = '준비'; dot.classList.remove('pulse'); return; }
+  const i = Math.floor(k);
+  if (!calib.done) {
+    dot.textContent = i < calib.n ? String(i + 1) : '–';
+    dot.classList.toggle('pulse', i < calib.n && k - i < 0.15);
+  }
+  if (!calib.done && k > calib.n + 0.5) {
+    calib.done = true;
+    dot.classList.remove('pulse');
+    if (calib.taps.length < 6) {
+      $('#calibRes').textContent = '입력이 너무 적습니다. 다시 측정해 주세요.';
+    } else {
+      const s = calib.taps.slice().sort((a, b) => a - b);
+      const med = s[Math.floor(s.length / 2)];
+      calib.result = clamp(Math.round(med * 1000 / 5) * 5, -200, 200);
+      $('#calibRes').textContent = `측정값 ${calib.result > 0 ? '+' : ''}${calib.result} ms  (지금 설정 ${settings.offset > 0 ? '+' : ''}${settings.offset} ms)`;
+      $('#calibApply').hidden = false;
+      $('#calibApply').focus();
+    }
+    announce($('#calibRes').textContent);
+  }
+}
+function endCalib() { calib.active = false; closeScreen('scrCalib'); }
+$('#calibApply').addEventListener('click', () => {
+  if (calib.result !== null) { settings.offset = calib.result; saveSettings(); }
+  endCalib(); renderSettings();
+});
+$('#calibRetry').addEventListener('click', startCalib);
+$('#calibCancel').addEventListener('click', endCalib);
+
+/* records */
+function renderRecords() {
+  const body = $('#recBody'); body.innerHTML = '';
+  getRecords().forEach((e, i) => {
+    const tr = document.createElement('tr');
+    if (i < 3) tr.classList.add('top');
+    if (e.id && e.id === game.savedId) tr.classList.add('me');
+    const cells = [
+      ['n', String(i + 1)],
+      ['who', e.name],
+      ['g', `${gradeOf(e.score)} · ${(DIFF[e.diff] || DIFF.normal).name} · ${e.combo}연속`],
+      ['s', Number(e.score).toLocaleString()]
+    ];
+    for (const [cls, txt] of cells) { const td = document.createElement('td'); td.className = cls; td.textContent = txt; tr.appendChild(td); }
+    body.appendChild(tr);
+  });
+}
+$('#recBack').addEventListener('click', () => closeScreen('scrRecords'));
+$('#recReset').addEventListener('click', () => {
+  if (!confirm('저장된 기록을 모두 지울까요?')) return;
+  setRecords(DEFAULT_REC.slice());
+  game.best = bestRecord(); game.savedId = null;
+  renderRecords(); updateHUD();
+});
+$('#saveBtn').addEventListener('click', saveRecord);
+$('#againBtn').addEventListener('click', () => startGame(game.practice));
+$('#resRecords').addEventListener('click', () => openScreen('scrRecords'));
+$('#resTitleBtn').addEventListener('click', () => { game.state = 'TITLE'; game.notes = []; closeAllScreens(); openScreen('scrTitle'); });
+
+/* ═════════ keyboard ═════════ */
+function toggleMute() {
+  muted = !muted;
+  applyVolume();
+  announce(muted ? '소리 끔' : '소리 켬');
+}
+window.addEventListener('keydown', (e) => {
+  if (remap) { remapKey(e); return; }
+
+  const lane = laneCodes().indexOf(e.code);
+
+  if (calib.active && topScreen() === 'scrCalib') {
+    if (e.code === 'Escape') { e.preventDefault(); endCalib(); return; }
+    if ((lane >= 0 || e.code === 'Space') && !calib.done) { e.preventDefault(); if (!e.repeat) calibTap(e); return; }
+  }
+
+  if (e.target && e.target.tagName === 'INPUT') {
+    if (e.key === 'Enter') { e.preventDefault(); saveRecord(); }
+    else if (e.key === 'Escape') { e.preventDefault(); e.target.blur(); $('#againBtn').focus(); }
+    return;
+  }
+
+  if (game.state === 'PLAYING' || game.state === 'RESUME') {
+    if (lane >= 0) {
+      e.preventDefault();
+      if (e.repeat) return;
+      setKey(lane, true);
+      if (game.state === 'PLAYING') hit(lane, eventTime(e));
+      return;
+    }
+    if (e.code === 'Escape' || e.code === 'KeyP') { e.preventDefault(); pauseGame(); return; }
+    if (e.code === 'KeyM') { toggleMute(); return; }
+    if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+    return;
+  }
+
+  // menus
+  const top = topScreen();
+  if (e.code === 'KeyM' && !e.repeat) { toggleMute(); return; }
+  if (e.code === 'ArrowDown') { e.preventDefault(); moveFocus(1); return; }
+  if (e.code === 'ArrowUp') { e.preventDefault(); moveFocus(-1); return; }
+  if ((e.code === 'ArrowLeft' || e.code === 'ArrowRight') && top === 'scrSettings') {
+    const row = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.row;
+    if (row) { e.preventDefault(); changeSetting(row, e.code === 'ArrowLeft' ? -1 : 1); }
+    return;
+  }
+  if ((e.code === 'ArrowLeft' || e.code === 'ArrowRight') && (top === 'scrResult' || top === 'scrRecords' || top === 'scrCalib')) {
+    e.preventDefault(); moveFocus(e.code === 'ArrowLeft' ? -1 : 1); return;
+  }
+  if (e.code === 'Enter' && top === 'scrSettings') {
+    const row = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.row;
+    const def = SET_ROWS.find(r => r.key === row);
+    if (def && def.type !== 'action') { e.preventDefault(); changeSetting(row, 1); return; }
+  }
+  if (e.code === 'Escape') {
+    e.preventDefault();
+    if (top === 'scrSettings' || top === 'scrRecords') closeScreen(top);
+    else if (top === 'scrPause') resumeGame();
+    return;
+  }
+  if (e.code === 'Enter' && top === 'scrResult' && document.activeElement === document.body) { e.preventDefault(); startGame(game.practice); }
+});
+window.addEventListener('keyup', (e) => {
+  const lane = laneCodes().indexOf(e.code);
+  if (lane >= 0) setKey(lane, false);
+});
+window.addEventListener('blur', () => { releaseKeys(); pauseGame(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
+
+/* ═════════ main loop ═════════ */
+let lastT = perf();
+function frame(ms) {
+  const now = ms / 1000;
+  const dt = Math.min(0.05, Math.max(0, now - lastT));
+  lastT = now;
+
+  if (game.state === 'PLAYING') {
+    game.time = perf() - game.t0;
+    tickGame();
+  } else if (game.state === 'RESUME' && perf() >= game.resumeEnd) {
+    game.t0 += perf() - game.pauseAt;
+    game.state = 'PLAYING';
+  }
+  runEvents();
+  if (game.state !== 'PAUSED') tickFx(dt);
+  let adt = game.state === 'PAUSED' ? 0 : dt;
+  if (game.hitStop > 0) { game.hitStop -= dt; adt = 0; }
+  stepFighter(player, adt);
+  stepFighter(rival, adt);
+  if (calib.active) tickCalib();
+
+  drawTrack();
+  drawStage(now);
+  requestAnimationFrame(frame);
+}
+
+refreshKeys();
+updateHUD();
+openScreen('scrTitle');
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(resizeAll);
+requestAnimationFrame((ms) => { lastT = ms / 1000; frame(ms); });
+})();
+</script>
+</body>
+</html>
